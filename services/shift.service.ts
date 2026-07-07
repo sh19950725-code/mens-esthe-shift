@@ -88,3 +88,22 @@ export async function getShiftsByDateRange(startDate: string, endDate: string) {
 
   return (data as Shift[]) || [];
 }
+
+export type UpdateShiftInput = {
+  cast_id?: string;
+  work_date?: string;
+  start_time?: string;
+  end_time?: string;
+  memo?: string | null;
+};
+
+export async function updateShiftById(id: string, input: UpdateShiftInput) {
+  const { error } = await supabase
+    .from("shifts")
+    .update(input)
+    .eq("id", id);
+
+  if (error) {
+    throw error;
+  }
+}

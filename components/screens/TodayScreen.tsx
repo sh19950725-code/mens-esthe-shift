@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import ShiftCard from "@/components/cards/ShiftCard";
+import EditShiftModal from "@/components/ui/EditShiftModal";
 import {
   deleteShiftById,
   getShiftsByDate,
@@ -13,6 +14,8 @@ export default function TodayScreen() {
   const [workDate, setWorkDate] = useState(
     new Date().toISOString().slice(0, 10)
   );
+
+  const [editingShift, setEditingShift] = useState<Shift | null>(null);
 
   useEffect(() => {
     loadShifts();
@@ -60,19 +63,27 @@ export default function TodayScreen() {
 
       <section className="mb-4 rounded-2xl bg-gray-100 p-4">
         <p className="text-sm text-gray-500">{workDate}</p>
-        <p className="mt-1 text-xl font-bold">出勤 {shifts.length}名</p>
+
+        <p className="mt-1 text-xl font-bold">
+          出勤 {shifts.length}名
+        </p>
       </section>
 
       <section className="space-y-3">
         {shifts.map((shift) => (
           <ShiftCard
             key={shift.id}
-            name={shift.casts?.display_name || shift.casts?.name || "未設定"}
+            name={
+              shift.casts?.display_name ||
+              shift.casts?.name ||
+              "未設定"
+            }
             time={`${shift.start_time.slice(0, 5)}〜${shift.end_time.slice(
               0,
               5
             )}`}
             memo={shift.memo}
+            onEdit={() => setEditingShift(shift)}
             onDelete={() => deleteShift(shift.id)}
           />
         ))}
@@ -83,6 +94,14 @@ export default function TodayScreen() {
           </p>
         )}
       </section>
+
+      {editingShift && (
+        <EditShiftModal
+          shift={editingShift}
+          onClose={() => setEditingShift(null)}
+          onSaved={loadShifts}
+        />
+      )}
     </>
   );
 }
