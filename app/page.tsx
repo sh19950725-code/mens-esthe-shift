@@ -6,6 +6,7 @@ import WeekScreen from "@/components/screens/WeekScreen";
 import RegisterScreen from "@/components/screens/RegisterScreen";
 import CastScreen from "@/components/screens/CastScreen";
 import BottomNavigation from "@/components/navigation/BottomNavigation";
+import FloatingActionButton from "@/components/ui/FloatingActionButton";
 
 type Tab = "today" | "week" | "register" | "casts";
 
@@ -21,7 +22,10 @@ export default function Home() {
         {activeTab === "casts" && <CastScreen />}
       </div>
 
+      <FloatingActionButton onClick={() => setActiveTab("register")} />
+
       <BottomNavigation activeTab={activeTab} onChangeTab={setActiveTab} />
+
     </main>
   );
 }

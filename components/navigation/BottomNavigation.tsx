@@ -5,40 +5,36 @@ type BottomNavigationProps = {
   onChangeTab: (tab: Tab) => void;
 };
 
+const tabs: { key: Tab; label: string; icon: string }[] = [
+  { key: "today", label: "本日", icon: "🏠" },
+  { key: "week", label: "週間", icon: "📅" },
+  { key: "register", label: "登録", icon: "＋" },
+  { key: "casts", label: "キャスト", icon: "👩" },
+];
+
 export default function BottomNavigation({
   activeTab,
   onChangeTab,
 }: BottomNavigationProps) {
   return (
     <nav className="fixed bottom-0 left-0 right-0 border-t bg-white">
-      <div className="mx-auto grid max-w-md grid-cols-4 text-center text-sm">
-        <button
-          onClick={() => onChangeTab("today")}
-          className={`p-4 ${activeTab === "today" ? "font-bold text-black" : "text-gray-400"}`}
-        >
-          本日
-        </button>
+      <div className="mx-auto grid max-w-md grid-cols-4 text-center">
+        {tabs.map((tab) => {
+          const isActive = activeTab === tab.key;
 
-        <button
-          onClick={() => onChangeTab("week")}
-          className={`p-4 ${activeTab === "week" ? "font-bold text-black" : "text-gray-400"}`}
-        >
-          週間
-        </button>
-
-        <button
-          onClick={() => onChangeTab("register")}
-          className={`p-4 ${activeTab === "register" ? "font-bold text-black" : "text-gray-400"}`}
-        >
-          登録
-        </button>
-
-        <button
-          onClick={() => onChangeTab("casts")}
-          className={`p-4 ${activeTab === "casts" ? "font-bold text-black" : "text-gray-400"}`}
-        >
-          キャスト
-        </button>
+          return (
+            <button
+              key={tab.key}
+              onClick={() => onChangeTab(tab.key)}
+              className={`flex flex-col items-center gap-1 py-3 text-xs ${
+                isActive ? "font-bold text-black" : "text-gray-400"
+              }`}
+            >
+              <span className="text-xl">{tab.icon}</span>
+              <span>{tab.label}</span>
+            </button>
+          );
+        })}
       </div>
     </nav>
   );
