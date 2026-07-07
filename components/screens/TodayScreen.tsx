@@ -18,7 +18,9 @@ type Shift = {
 
 export default function TodayScreen() {
   const [shifts, setShifts] = useState<Shift[]>([]);
-  const [workDate, setWorkDate] = useState(new Date().toISOString().slice(0, 10));
+  const [workDate, setWorkDate] = useState(
+    new Date().toISOString().slice(0, 10)
+  );
 
   useEffect(() => {
     loadShifts();
@@ -27,7 +29,8 @@ export default function TodayScreen() {
   async function loadShifts() {
     const { data, error } = await supabase
       .from("shifts")
-      .select(`
+      .select(
+        `
         id,
         work_date,
         start_time,
@@ -37,7 +40,8 @@ export default function TodayScreen() {
           name,
           display_name
         )
-      `)
+      `
+      )
       .eq("work_date", workDate)
       .order("start_time", { ascending: true });
 
@@ -47,6 +51,25 @@ export default function TodayScreen() {
     }
 
     setShifts((data as Shift[]) || []);
+  }
+
+  async function deleteShift(id: string) {
+    const ok = confirm("このシフトを削除しますか？");
+
+    if (!ok) return;
+
+    const { error } = await supabase
+      .from("shifts")
+      .delete()
+      .eq("id", id);
+
+    if (error) {
+      console.error(error);
+      alert("削除に失敗しました");
+      return;
+    }
+
+    await loadShifts();
   }
 
   return (
@@ -67,7 +90,9 @@ export default function TodayScreen() {
 
       <section className="mb-4 rounded-2xl bg-gray-100 p-4">
         <p className="text-sm text-gray-500">{workDate}</p>
-        <p className="mt-1 text-xl font-bold">出勤 {shifts.length}名</p>
+        <p className="mt-1 text-xl font-bold">
+          出勤 {shifts.length}名
+        </p>
       </section>
 
       <section className="space-y-3">
@@ -75,12 +100,19 @@ export default function TodayScreen() {
           <ShiftCard
             key={shift.id}
             name={shift.casts?.display_name || shift.casts?.name || "未設定"}
-            time={`${shift.start_time.slice(0, 5)}〜${shift.end_time.slice(0, 5)}`}
+            time={`${shift.start_time.slice(0, 5)}〜${shift.end_time.slice(
+              0,
+              5
+            )}`}
+            memo={shift.memo}
+            onDelete={() => deleteShift(shift.id)}
           />
         ))}
 
         {shifts.length === 0 && (
-          <p className="text-sm text-gray-500">この日のシフトはまだ登録されていません。</p>
+          <p className="text-sm text-gray-500">
+            この日のシフトはまだ登録されていません。
+          </p>
         )}
       </section>
     </>
