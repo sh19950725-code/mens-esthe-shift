@@ -2,19 +2,11 @@
 
 import { useEffect, useState } from "react";
 import ShiftCard from "@/components/cards/ShiftCard";
-import { supabase } from "@/lib/supabase";
-
-type Shift = {
-  id: string;
-  work_date: string;
-  start_time: string;
-  end_time: string;
-  memo: string | null;
-  casts: {
-    name: string;
-    display_name: string | null;
-  } | null;
-};
+import {
+  deleteShiftById,
+  getShiftsByDate,
+  type Shift,
+} from "@/services/shift.service";
 
 export default function TodayScreen() {
   const [shifts, setShifts] = useState<Shift[]>([]);
@@ -27,30 +19,13 @@ export default function TodayScreen() {
   }, [workDate]);
 
   async function loadShifts() {
-    const { data, error } = await supabase
-      .from("shifts")
-      .select(
-        `
-        id,
-        work_date,
-        start_time,
-        end_time,
-        memo,
-        casts (
-          name,
-          display_name
-        )
-      `
-      )
-      .eq("work_date", workDate)
-      .order("start_time", { ascending: true });
-
-    if (error) {
+    try {
+      const data = await getShiftsByDate(workDate);
+      setShifts(data);
+    } catch (error) {
       console.error(error);
-      return;
+      alert("シフトの取得に失敗しました");
     }
-
-    setShifts((data as Shift[]) || []);
   }
 
   async function deleteShift(id: string) {
@@ -58,18 +33,13 @@ export default function TodayScreen() {
 
     if (!ok) return;
 
-    const { error } = await supabase
-      .from("shifts")
-      .delete()
-      .eq("id", id);
-
-    if (error) {
+    try {
+      await deleteShiftById(id);
+      await loadShifts();
+    } catch (error) {
       console.error(error);
       alert("削除に失敗しました");
-      return;
     }
-
-    await loadShifts();
   }
 
   return (
@@ -90,9 +60,7 @@ export default function TodayScreen() {
 
       <section className="mb-4 rounded-2xl bg-gray-100 p-4">
         <p className="text-sm text-gray-500">{workDate}</p>
-        <p className="mt-1 text-xl font-bold">
-          出勤 {shifts.length}名
-        </p>
+        <p className="mt-1 text-xl font-bold">出勤 {shifts.length}名</p>
       </section>
 
       <section className="space-y-3">

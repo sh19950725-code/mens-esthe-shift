@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import { createShift } from "@/services/shift.service";
 
 type Cast = {
   id: string;
@@ -43,23 +44,22 @@ export default function RegisterScreen() {
       return;
     }
 
-    const { error } = await supabase.from("shifts").insert({
-      cast_id: castId,
-      work_date: workDate,
-      start_time: startTime,
-      end_time: endTime,
-      memo: memo || null,
-    });
+    try {
+      await createShift({
+        cast_id: castId,
+        work_date: workDate,
+        start_time: startTime,
+        end_time: endTime,
+        memo: memo || null,
+      });
 
-    if (error) {
+      alert("シフトを登録しました");
+      setCastId("");
+      setMemo("");
+    } catch (error) {
       console.error(error);
       alert("シフト登録に失敗しました");
-      return;
     }
-
-    alert("シフトを登録しました");
-    setCastId("");
-    setMemo("");
   }
 
   return (
