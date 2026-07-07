@@ -63,3 +63,28 @@ export async function createShift(input: CreateShiftInput) {
   }
 }
 
+export async function getShiftsByDateRange(startDate: string, endDate: string) {
+  const { data, error } = await supabase
+    .from("shifts")
+    .select(`
+      id,
+      work_date,
+      start_time,
+      end_time,
+      memo,
+      casts (
+        name,
+        display_name
+      )
+    `)
+    .gte("work_date", startDate)
+    .lte("work_date", endDate)
+    .order("work_date", { ascending: true })
+    .order("start_time", { ascending: true });
+
+  if (error) {
+    throw error;
+  }
+
+  return (data as Shift[]) || [];
+}
