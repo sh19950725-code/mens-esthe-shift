@@ -2,14 +2,11 @@
 
 import { useEffect, useState } from "react";
 import ShiftCard from "@/components/cards/ShiftCard";
-import { supabase } from "@/lib/supabase";
-
-type Cast = {
-  id: string;
-  name: string;
-  display_name: string | null;
-  status: string;
-};
+import {
+  createCast,
+  getActiveCasts,
+  type Cast,
+} from "@/services/cast.service";
 
 export default function CastScreen() {
   const [casts, setCasts] = useState<Cast[]>([]);
@@ -20,36 +17,26 @@ export default function CastScreen() {
   }, []);
 
   async function loadCasts() {
-    const { data, error } = await supabase
-      .from("casts")
-      .select("*")
-      .order("created_at", { ascending: true });
-
-    if (error) {
+    try {
+      const data = await getActiveCasts();
+      setCasts(data);
+    } catch (error) {
       console.error(error);
-      return;
+      alert("キャスト取得に失敗しました");
     }
-
-    setCasts(data || []);
   }
 
   async function addCast() {
     if (!name.trim()) return;
 
-    const { error } = await supabase.from("casts").insert({
-      name: name.trim(),
-      display_name: name.trim(),
-      status: "active",
-    });
-
-    if (error) {
+    try {
+      await createCast(name.trim());
+      setName("");
+      await loadCasts();
+    } catch (error) {
       console.error(error);
-      alert("登録に失敗しました");
-      return;
+      alert("キャスト登録に失敗しました");
     }
-
-    setName("");
-    loadCasts();
   }
 
   return (
@@ -85,7 +72,9 @@ export default function CastScreen() {
         ))}
 
         {casts.length === 0 && (
-          <p className="text-sm text-gray-500">キャストがまだ登録されていません。</p>
+          <p className="text-sm text-gray-500">
+            キャストがまだ登録されていません。
+          </p>
         )}
       </section>
     </>

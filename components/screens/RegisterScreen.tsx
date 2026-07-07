@@ -1,14 +1,8 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabase";
+import { getActiveCasts, type Cast } from "@/services/cast.service";
 import { createShift } from "@/services/shift.service";
-
-type Cast = {
-  id: string;
-  name: string;
-  display_name: string | null;
-};
 
 export default function RegisterScreen() {
   const [casts, setCasts] = useState<Cast[]>([]);
@@ -24,18 +18,13 @@ export default function RegisterScreen() {
   }, []);
 
   async function loadCasts() {
-    const { data, error } = await supabase
-      .from("casts")
-      .select("id, name, display_name")
-      .eq("status", "active")
-      .order("created_at", { ascending: true });
-
-    if (error) {
+    try {
+      const data = await getActiveCasts();
+      setCasts(data);
+    } catch (error) {
       console.error(error);
-      return;
+      alert("キャスト取得に失敗しました");
     }
-
-    setCasts(data || []);
   }
 
   async function addShift() {
