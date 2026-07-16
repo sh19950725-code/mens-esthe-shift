@@ -9,6 +9,10 @@ import {
 } from "@/services/shift.service";
 import { getShiftStatus } from "@/lib/time";
 
+type DashboardScreenProps = {
+  onOpenRooms: () => void;
+};
+
 function formatLocalDate(date: Date) {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
@@ -17,7 +21,9 @@ function formatLocalDate(date: Date) {
   return `${year}-${month}-${day}`;
 }
 
-export default function DashboardScreen() {
+export default function DashboardScreen({
+  onOpenRooms,
+}: DashboardScreenProps) {
   const [todayShifts, setTodayShifts] = useState<Shift[]>([]);
   const [tomorrowShifts, setTomorrowShifts] = useState<Shift[]>([]);
   const [castCount, setCastCount] = useState(0);
@@ -169,6 +175,32 @@ export default function DashboardScreen() {
             {tomorrowText}
           </p>
         </div>
+      </section>
+
+      <section className="mb-6">
+        <button
+          type="button"
+          onClick={onOpenRooms}
+          className="flex w-full items-center justify-between rounded-2xl border bg-white p-4 text-left shadow-sm"
+        >
+          <div>
+            <p className="text-sm text-gray-500">
+              店舗設備
+            </p>
+
+            <p className="mt-1 text-lg font-bold">
+              部屋管理
+            </p>
+
+            <p className="mt-1 text-xs text-gray-500">
+              部屋の追加・検索・非表示
+            </p>
+          </div>
+
+          <span className="text-2xl">
+            ›
+          </span>
+        </button>
       </section>
 
       <section>

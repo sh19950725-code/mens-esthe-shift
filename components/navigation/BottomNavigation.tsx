@@ -1,4 +1,10 @@
-type Tab = "home" | "today" | "week" | "register" | "casts";
+type Tab =
+  | "home"
+  | "today"
+  | "week"
+  | "register"
+  | "casts"
+  | "rooms";
 
 type BottomNavigationProps = {
   activeTab: Tab;
