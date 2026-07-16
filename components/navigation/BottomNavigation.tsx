@@ -7,7 +7,7 @@ type BottomNavigationProps = {
 
 const tabs: { key: Tab; label: string; icon: string }[] = [
   { key: "today", label: "本日", icon: "🏠" },
-  { key: "week", label: "週間", icon: "📅" },
+  { key: "week", label: "カレンダー", icon: "📅" },
   { key: "register", label: "登録", icon: "＋" },
   { key: "casts", label: "キャスト", icon: "👩" },
 ];

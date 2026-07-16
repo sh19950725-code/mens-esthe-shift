@@ -1,21 +1,43 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Button from "@/components/ui/Button";
+import Input from "@/components/ui/Input";
+import Select from "@/components/ui/Select";
 import { getActiveCasts, type Cast } from "@/services/cast.service";
-import { createShift } from "@/services/shift.service";
+import { getActiveRooms, type Room } from "@/services/room.service";
+import {
+  checkShiftConflict,
+  createShift,
+} from "@/services/shift.service";
 
 export default function RegisterScreen() {
   const [casts, setCasts] = useState<Cast[]>([]);
+  const [rooms, setRooms] = useState<Room[]>([]);
+
   const [castId, setCastId] = useState("");
+  const [roomId, setRoomId] = useState("");
   const [workDate, setWorkDate] = useState("");
   const [startTime, setStartTime] = useState("12:00");
   const [endTime, setEndTime] = useState("20:00");
   const [memo, setMemo] = useState("");
 
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   useEffect(() => {
     loadCasts();
-    setWorkDate(new Date().toISOString().slice(0, 10));
+    loadRooms();
+    setWorkDate(getTodayDate());
   }, []);
+
+  function getTodayDate() {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, "0");
+    const day = String(today.getDate()).padStart(2, "0");
+
+    return `${year}-${month}-${day}`;
+  }
 
   async function loadCasts() {
     try {
@@ -23,33 +45,78 @@ export default function RegisterScreen() {
       setCasts(data);
     } catch (error) {
       console.error(error);
-      alert("キャスト取得に失敗しました");
+      alert("キャスト情報の取得に失敗しました");
+    }
+  }
+
+  async function loadRooms() {
+    try {
+      const data = await getActiveRooms();
+      setRooms(data);
+    } catch (error) {
+      console.error(error);
+      alert("部屋情報の取得に失敗しました");
     }
   }
 
   async function addShift() {
-    if (!castId || !workDate || !startTime || !endTime) {
-      alert("未入力の項目があります");
+  if (!workDate) {
+    alert("日付を選択してください");
+    return;
+  }
+
+  if (!castId) {
+    alert("キャストを選択してください");
+    return;
+  }
+
+  if (!startTime || !endTime) {
+    alert("出勤時間と退勤時間を入力してください");
+    return;
+  }
+
+  if (startTime >= endTime) {
+    alert("退勤時間は出勤時間より後に設定してください");
+    return;
+  }
+
+  try {
+    setIsSubmitting(true);
+
+    const result = await checkShiftConflict(
+      castId,
+      roomId || null,
+      workDate,
+      startTime,
+      endTime
+    );
+
+    if (!result.ok) {
+      alert(result.message);
       return;
     }
 
-    try {
-      await createShift({
-        cast_id: castId,
-        work_date: workDate,
-        start_time: startTime,
-        end_time: endTime,
-        memo: memo || null,
-      });
+    await createShift({
+      cast_id: castId,
+      room_id: roomId || null,
+      work_date: workDate,
+      start_time: startTime,
+      end_time: endTime,
+      memo: memo.trim() || null,
+    });
 
-      alert("シフトを登録しました");
-      setCastId("");
-      setMemo("");
-    } catch (error) {
-      console.error(error);
-      alert("シフト登録に失敗しました");
-    }
+    alert("シフトを登録しました");
+
+    setCastId("");
+    setRoomId("");
+    setMemo("");
+  } catch (error) {
+    console.error(error);
+    alert("シフト登録に失敗しました");
+  } finally {
+    setIsSubmitting(false);
   }
+}
 
   return (
     <>
@@ -59,53 +126,100 @@ export default function RegisterScreen() {
       </header>
 
       <section className="space-y-4">
-        <select
-          value={castId}
-          onChange={(e) => setCastId(e.target.value)}
-          className="w-full rounded-xl border p-4"
-        >
-          <option value="">キャストを選択</option>
-          {casts.map((cast) => (
-            <option key={cast.id} value={cast.id}>
-              {cast.display_name || cast.name}
-            </option>
-          ))}
-        </select>
+        <div>
+          <label className="mb-1 block text-sm font-bold text-gray-700">
+            日付
+          </label>
 
-        <input
-          value={workDate}
-          onChange={(e) => setWorkDate(e.target.value)}
-          className="w-full rounded-xl border p-4"
-          type="date"
-        />
+          <Input
+            value={workDate}
+            onChange={(event) => setWorkDate(event.target.value)}
+            type="date"
+          />
+        </div>
 
-        <input
-          value={startTime}
-          onChange={(e) => setStartTime(e.target.value)}
-          className="w-full rounded-xl border p-4"
-          type="time"
-        />
+        <div>
+          <label className="mb-1 block text-sm font-bold text-gray-700">
+            キャスト
+          </label>
 
-        <input
-          value={endTime}
-          onChange={(e) => setEndTime(e.target.value)}
-          className="w-full rounded-xl border p-4"
-          type="time"
-        />
+          <Select
+            value={castId}
+            onChange={(event) => setCastId(event.target.value)}
+          >
+            <option value="">キャストを選択</option>
 
-        <textarea
-          value={memo}
-          onChange={(e) => setMemo(e.target.value)}
-          className="w-full rounded-xl border p-4"
-          placeholder="メモ"
-        />
+            {casts.map((cast) => (
+              <option key={cast.id} value={cast.id}>
+                {cast.display_name || cast.name}
+              </option>
+            ))}
+          </Select>
+        </div>
 
-        <button
+        <div>
+          <label className="mb-1 block text-sm font-bold text-gray-700">
+            部屋
+          </label>
+
+          <Select
+            value={roomId}
+            onChange={(event) => setRoomId(event.target.value)}
+          >
+            <option value="">部屋を選択</option>
+
+            {rooms.map((room) => (
+              <option key={room.id} value={room.id}>
+                {room.name}
+              </option>
+            ))}
+          </Select>
+        </div>
+
+        <div>
+          <label className="mb-1 block text-sm font-bold text-gray-700">
+            出勤時間
+          </label>
+
+          <Input
+            value={startTime}
+            onChange={(event) => setStartTime(event.target.value)}
+            type="time"
+          />
+        </div>
+
+        <div>
+          <label className="mb-1 block text-sm font-bold text-gray-700">
+            退勤時間
+          </label>
+
+          <Input
+            value={endTime}
+            onChange={(event) => setEndTime(event.target.value)}
+            type="time"
+          />
+        </div>
+
+        <div>
+          <label className="mb-1 block text-sm font-bold text-gray-700">
+            メモ
+          </label>
+
+          <textarea
+            value={memo}
+            onChange={(event) => setMemo(event.target.value)}
+            className="min-h-28 w-full rounded-xl border p-4"
+            placeholder="新人、遅出など"
+          />
+        </div>
+
+        <Button
           onClick={addShift}
-          className="w-full rounded-xl bg-black p-4 font-bold text-white"
+          disabled={isSubmitting}
+          className={isSubmitting ? "cursor-not-allowed opacity-50" : ""}
         >
-          登録する
-        </button>
+          {isSubmitting ? "登録中..." : "登録する"}
+        </Button>
       </section>
     </>
   );

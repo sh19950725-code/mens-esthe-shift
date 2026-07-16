@@ -2,11 +2,11 @@
 
 import { useState } from "react";
 import TodayScreen from "@/components/screens/TodayScreen";
-import WeekScreen from "@/components/screens/WeekScreen";
 import RegisterScreen from "@/components/screens/RegisterScreen";
 import CastScreen from "@/components/screens/CastScreen";
 import BottomNavigation from "@/components/navigation/BottomNavigation";
 import FloatingActionButton from "@/components/ui/FloatingActionButton";
+import CalendarScreen from "@/components/screens/CalendarScreen";
 
 type Tab = "today" | "week" | "register" | "casts";
 
@@ -17,7 +17,7 @@ export default function Home() {
     <main className="min-h-screen bg-gray-100 pb-20">
       <div className="mx-auto min-h-screen max-w-md bg-white p-4">
         {activeTab === "today" && <TodayScreen />}
-        {activeTab === "week" && <WeekScreen />}
+        {activeTab === "week" && <CalendarScreen />}
         {activeTab === "register" && <RegisterScreen />}
         {activeTab === "casts" && <CastScreen />}
       </div>

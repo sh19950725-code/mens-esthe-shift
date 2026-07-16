@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import ShiftCard from "@/components/cards/ShiftCard";
 import EditShiftModal from "@/components/ui/EditShiftModal";
+import { getShiftStatus } from "@/utils/time";
 import {
   deleteShiftById,
   getShiftsByDate,
@@ -45,6 +46,22 @@ export default function TodayScreen() {
     }
   }
 
+  const workingCount = shifts.filter((shift) => {
+  const status = getShiftStatus(
+    shift.work_date,
+    shift.start_time,
+    shift.end_time
+  );
+
+  return status.status === "working";
+}).length;
+
+const activeRoomCount = new Set(
+  shifts
+    .map((shift) => shift.rooms?.name)
+    .filter((roomName): roomName is string => Boolean(roomName))
+).size;
+
   return (
     <>
       <header className="mb-5">
@@ -61,32 +78,56 @@ export default function TodayScreen() {
         />
       </section>
 
-      <section className="mb-4 rounded-2xl bg-gray-100 p-4">
-        <p className="text-sm text-gray-500">{workDate}</p>
+      <section className="mb-4 grid grid-cols-3 gap-2">
+  <div className="rounded-2xl bg-gray-100 p-3">
+    <p className="text-xs text-gray-500">出勤予定</p>
+    <p className="mt-1 text-xl font-bold">{shifts.length}名</p>
+  </div>
 
-        <p className="mt-1 text-xl font-bold">
-          出勤 {shifts.length}名
-        </p>
-      </section>
+  <div className="rounded-2xl bg-green-50 p-3">
+    <p className="text-xs text-green-700">出勤中</p>
+    <p className="mt-1 text-xl font-bold text-green-700">
+      {workingCount}名
+    </p>
+  </div>
+
+  <div className="rounded-2xl bg-blue-50 p-3">
+    <p className="text-xs text-blue-700">使用部屋</p>
+    <p className="mt-1 text-xl font-bold text-blue-700">
+      {activeRoomCount}室
+    </p>
+  </div>
+</section>
 
       <section className="space-y-3">
-        {shifts.map((shift) => (
-          <ShiftCard
-            key={shift.id}
-            name={
-              shift.casts?.display_name ||
-              shift.casts?.name ||
-              "未設定"
-            }
-            time={`${shift.start_time.slice(0, 5)}〜${shift.end_time.slice(
-              0,
-              5
-            )}`}
-            memo={shift.memo}
-            onEdit={() => setEditingShift(shift)}
-            onDelete={() => deleteShift(shift.id)}
-          />
-        ))}
+        {shifts.map((shift) => {
+  const shiftStatus = getShiftStatus(
+    shift.work_date,
+    shift.start_time,
+    shift.end_time
+  );
+
+  return (
+    <ShiftCard
+      key={shift.id}
+      name={
+        shift.casts?.display_name ||
+        shift.casts?.name ||
+        "未設定"
+      }
+      room={shift.rooms?.name || null}
+      time={`${shift.start_time.slice(0, 5)}〜${shift.end_time.slice(
+        0,
+        5
+      )}`}
+      status={shiftStatus.status}
+      statusLabel={shiftStatus.label}
+      memo={shift.memo}
+      onEdit={() => setEditingShift(shift)}
+      onDelete={() => deleteShift(shift.id)}
+    />
+  );
+})}
 
         {shifts.length === 0 && (
           <p className="text-sm text-gray-500">
