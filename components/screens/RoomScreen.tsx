@@ -4,9 +4,11 @@ import { useEffect, useMemo, useState } from "react";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import {
+  activateRoom,
   createRoom,
   deactivateRoom,
   getActiveRooms,
+  getInactiveRooms,
   type Room,
 } from "@/services/room.service";
 
@@ -14,12 +16,17 @@ type RoomScreenProps = {
   onBack: () => void;
 };
 
+type RoomView = "active" | "inactive";
+
 export default function RoomScreen({
   onBack,
 }: RoomScreenProps) {
-  const [rooms, setRooms] = useState<Room[]>([]);
+  const [activeRooms, setActiveRooms] = useState<Room[]>([]);
+  const [inactiveRooms, setInactiveRooms] = useState<Room[]>([]);
   const [roomName, setRoomName] = useState("");
   const [searchText, setSearchText] = useState("");
+  const [currentView, setCurrentView] =
+    useState<RoomView>("active");
   const [isAdding, setIsAdding] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -31,8 +38,13 @@ export default function RoomScreen({
     try {
       setIsLoading(true);
 
-      const data = await getActiveRooms();
-      setRooms(data);
+      const [activeData, inactiveData] = await Promise.all([
+        getActiveRooms(),
+        getInactiveRooms(),
+      ]);
+
+      setActiveRooms(activeData);
+      setInactiveRooms(inactiveData);
     } catch (error) {
       console.error(error);
       alert("部屋情報の取得に失敗しました");
@@ -49,13 +61,18 @@ export default function RoomScreen({
       return;
     }
 
-    const duplicateRoom = rooms.some(
+    const allRooms = [...activeRooms, ...inactiveRooms];
+
+    const duplicateRoom = allRooms.some(
       (room) =>
-        room.name.toLowerCase() === trimmedName.toLowerCase()
+        room.name.toLowerCase() ===
+        trimmedName.toLowerCase()
     );
 
     if (duplicateRoom) {
-      alert("同じ名前の部屋がすでに登録されています");
+      alert(
+        "同じ名前の部屋がすでに登録されています。非表示一覧も確認してください。"
+      );
       return;
     }
 
@@ -63,14 +80,17 @@ export default function RoomScreen({
       setIsAdding(true);
 
       const nextSortOrder =
-        rooms.length === 0
+        allRooms.length === 0
           ? 1
-          : Math.max(...rooms.map((room) => room.sort_order)) + 1;
+          : Math.max(
+              ...allRooms.map((room) => room.sort_order)
+            ) + 1;
 
       await createRoom(trimmedName, nextSortOrder);
 
       setRoomName("");
       await loadRooms();
+      setCurrentView("active");
     } catch (error) {
       console.error(error);
       alert("部屋の登録に失敗しました");
@@ -97,6 +117,29 @@ export default function RoomScreen({
     }
   }
 
+  async function handleActivateRoom(room: Room) {
+    const ok = confirm(
+      `${room.name}を再表示しますか？`
+    );
+
+    if (!ok) {
+      return;
+    }
+
+    try {
+      await activateRoom(room.id);
+      await loadRooms();
+    } catch (error) {
+      console.error(error);
+      alert("部屋の再表示に失敗しました");
+    }
+  }
+
+  const rooms =
+    currentView === "active"
+      ? activeRooms
+      : inactiveRooms;
+
   const filteredRooms = useMemo(() => {
     const keyword = searchText.trim().toLowerCase();
 
@@ -112,7 +155,9 @@ export default function RoomScreen({
   if (isLoading) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
-        <p className="text-sm text-gray-500">読み込み中...</p>
+        <p className="text-sm text-gray-500">
+          読み込み中...
+        </p>
       </div>
     );
   }
@@ -128,10 +173,17 @@ export default function RoomScreen({
       </button>
 
       <header className="mb-5">
-        <p className="text-sm text-gray-500">部屋管理</p>
-        <h1 className="text-2xl font-bold">部屋一覧</h1>
+        <p className="text-sm text-gray-500">
+          部屋管理
+        </p>
+
+        <h1 className="text-2xl font-bold">
+          部屋一覧
+        </h1>
+
         <p className="mt-1 text-sm text-gray-500">
-          使用中の部屋数：{rooms.length}室
+          表示中 {activeRooms.length}室・非表示{" "}
+          {inactiveRooms.length}室
         </p>
       </header>
 
@@ -140,7 +192,9 @@ export default function RoomScreen({
           <div className="min-w-0 flex-1">
             <Input
               value={roomName}
-              onChange={(event) => setRoomName(event.target.value)}
+              onChange={(event) =>
+                setRoomName(event.target.value)
+              }
               placeholder="新しい部屋名"
             />
           </div>
@@ -160,9 +214,37 @@ export default function RoomScreen({
 
         <Input
           value={searchText}
-          onChange={(event) => setSearchText(event.target.value)}
+          onChange={(event) =>
+            setSearchText(event.target.value)
+          }
           placeholder="部屋名で検索"
         />
+      </section>
+
+      <section className="mb-5 grid grid-cols-2 rounded-xl bg-gray-100 p-1">
+        <button
+          type="button"
+          onClick={() => setCurrentView("active")}
+          className={`rounded-lg px-3 py-2 text-sm font-bold ${
+            currentView === "active"
+              ? "bg-white text-black shadow-sm"
+              : "text-gray-500"
+          }`}
+        >
+          表示中（{activeRooms.length}）
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setCurrentView("inactive")}
+          className={`rounded-lg px-3 py-2 text-sm font-bold ${
+            currentView === "inactive"
+              ? "bg-white text-black shadow-sm"
+              : "text-gray-500"
+          }`}
+        >
+          非表示（{inactiveRooms.length}）
+        </button>
       </section>
 
       <section className="space-y-3">
@@ -173,35 +255,54 @@ export default function RoomScreen({
           >
             <div className="flex items-center justify-between gap-3">
               <div>
-                <p className="text-lg font-bold">{room.name}</p>
+                <p className="text-lg font-bold">
+                  {room.name}
+                </p>
 
                 <p className="mt-1 text-sm text-gray-500">
                   表示順：{room.sort_order}
                 </p>
               </div>
 
-              <button
-                type="button"
-                onClick={() => handleDeactivateRoom(room)}
-                className="shrink-0 rounded-lg bg-red-50 px-3 py-2 text-xs font-bold text-red-500"
-              >
-                非表示
-              </button>
+              {currentView === "active" ? (
+                <button
+                  type="button"
+                  onClick={() =>
+                    handleDeactivateRoom(room)
+                  }
+                  className="shrink-0 rounded-lg bg-red-50 px-3 py-2 text-xs font-bold text-red-500"
+                >
+                  非表示
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() =>
+                    handleActivateRoom(room)
+                  }
+                  className="shrink-0 rounded-lg bg-green-50 px-3 py-2 text-xs font-bold text-green-600"
+                >
+                  再表示
+                </button>
+              )}
             </div>
           </div>
         ))}
 
         {rooms.length === 0 && (
           <p className="rounded-xl bg-gray-50 p-4 text-sm text-gray-500">
-            部屋がまだ登録されていません。
+            {currentView === "active"
+              ? "表示中の部屋はありません。"
+              : "非表示の部屋はありません。"}
           </p>
         )}
 
-        {rooms.length > 0 && filteredRooms.length === 0 && (
-          <p className="rounded-xl bg-gray-50 p-4 text-sm text-gray-500">
-            検索条件に一致する部屋はありません。
-          </p>
-        )}
+        {rooms.length > 0 &&
+          filteredRooms.length === 0 && (
+            <p className="rounded-xl bg-gray-50 p-4 text-sm text-gray-500">
+              検索条件に一致する部屋はありません。
+            </p>
+          )}
       </section>
     </>
   );

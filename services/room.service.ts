@@ -48,3 +48,30 @@ export async function deactivateRoom(id: string): Promise<void> {
     throw error;
   }
 }
+
+export async function getInactiveRooms(): Promise<Room[]> {
+  const { data, error } = await supabase
+    .from("rooms")
+    .select("id, name, sort_order, status")
+    .eq("status", "inactive")
+    .order("sort_order", { ascending: true });
+
+  if (error) {
+    throw error;
+  }
+
+  return (data as Room[]) || [];
+}
+
+export async function activateRoom(id: string): Promise<void> {
+  const { error } = await supabase
+    .from("rooms")
+    .update({
+      status: "active",
+    })
+    .eq("id", id);
+
+  if (error) {
+    throw error;
+  }
+}
