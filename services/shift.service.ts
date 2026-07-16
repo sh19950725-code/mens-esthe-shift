@@ -299,3 +299,35 @@ export async function deleteShiftById(
     throw error;
   }
 }
+
+export async function getShiftsByCastId(
+  castId: string
+): Promise<Shift[]> {
+  const { data, error } = await supabase
+    .from("shifts")
+    .select(`
+      id,
+      cast_id,
+      room_id,
+      work_date,
+      start_time,
+      end_time,
+      memo,
+      casts (
+        name,
+        display_name
+      ),
+      rooms (
+        name
+      )
+    `)
+    .eq("cast_id", castId)
+    .order("work_date", { ascending: false })
+    .order("start_time", { ascending: true });
+
+  if (error) {
+    throw error;
+  }
+
+  return normalizeShifts(data as RawShift[] | null);
+}

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import EditCastModal from "@/components/ui/EditCastModal";
+import CastDetailModal from "@/components/ui/CastDetailModal";
 import {
   activateCast,
   createCast,
@@ -25,6 +26,9 @@ export default function CastScreen() {
     useState<CastView>("active");
 
   const [editingCast, setEditingCast] =
+    useState<Cast | null>(null);
+
+  const [selectedCast, setSelectedCast] =
     useState<Cast | null>(null);
 
   const [isAdding, setIsAdding] = useState(false);
@@ -112,6 +116,15 @@ export default function CastScreen() {
 
     try {
       await deactivateCast(cast.id);
+
+      if (selectedCast?.id === cast.id) {
+        setSelectedCast(null);
+      }
+
+      if (editingCast?.id === cast.id) {
+        setEditingCast(null);
+      }
+
       await loadCasts();
     } catch (error) {
       console.error("退店処理エラー:", error);
@@ -132,11 +145,21 @@ export default function CastScreen() {
 
     try {
       await activateCast(cast.id);
+
+      if (selectedCast?.id === cast.id) {
+        setSelectedCast(null);
+      }
+
       await loadCasts();
     } catch (error) {
       console.error("再表示エラー:", error);
       alert("再表示に失敗しました");
     }
+  }
+
+  async function handleCastSaved() {
+    await loadCasts();
+    setEditingCast(null);
   }
 
   const casts =
@@ -264,22 +287,28 @@ export default function CastScreen() {
           >
             <div className="flex items-start justify-between gap-3">
               <div className="min-w-0 flex-1">
-                <p className="truncate text-lg font-bold">
-                  {cast.display_name || cast.name}
-                </p>
+                <button
+                  type="button"
+                  onClick={() => setSelectedCast(cast)}
+                  className="block max-w-full text-left"
+                >
+                  <p className="truncate text-lg font-bold">
+                    {cast.display_name || cast.name}
+                  </p>
 
-                {cast.display_name &&
-                  cast.display_name !== cast.name && (
-                    <p className="mt-1 text-xs text-gray-400">
-                      管理名：{cast.name}
-                    </p>
-                  )}
+                  {cast.display_name &&
+                    cast.display_name !== cast.name && (
+                      <p className="mt-1 text-xs text-gray-400">
+                        管理名：{cast.name}
+                      </p>
+                    )}
 
-                <p className="mt-1 text-sm text-gray-500">
-                  {currentView === "active"
-                    ? "在籍中"
-                    : "退店済み"}
-                </p>
+                  <p className="mt-1 text-sm text-gray-500">
+                    {currentView === "active"
+                      ? "在籍中"
+                      : "退店済み"}
+                  </p>
+                </button>
 
                 {cast.memo && (
                   <p className="mt-2 rounded-lg bg-gray-100 p-2 text-xs text-gray-600">
@@ -339,11 +368,22 @@ export default function CastScreen() {
           )}
       </section>
 
+      {selectedCast && (
+        <CastDetailModal
+          cast={selectedCast}
+          onClose={() => setSelectedCast(null)}
+          onEdit={() => {
+            setEditingCast(selectedCast);
+            setSelectedCast(null);
+          }}
+        />
+      )}
+
       {editingCast && (
         <EditCastModal
           cast={editingCast}
           onClose={() => setEditingCast(null)}
-          onSaved={loadCasts}
+          onSaved={handleCastSaved}
         />
       )}
     </>
