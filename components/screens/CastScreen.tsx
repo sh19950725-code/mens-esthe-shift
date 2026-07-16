@@ -5,6 +5,7 @@ import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import EditCastModal from "@/components/ui/EditCastModal";
 import CastDetailModal from "@/components/ui/CastDetailModal";
+import CastCard from "@/components/casts/CastCard";
 import {
   activateCast,
   createCast,
@@ -281,75 +282,19 @@ export default function CastScreen() {
 
       <section className="space-y-3">
         {filteredCasts.map((cast) => (
-          <div
+          <CastCard
             key={cast.id}
-            className="rounded-2xl border bg-white p-4 shadow-sm"
-          >
-            <div className="flex items-start justify-between gap-3">
-              <div className="min-w-0 flex-1">
-                <button
-                  type="button"
-                  onClick={() => setSelectedCast(cast)}
-                  className="block max-w-full text-left"
-                >
-                  <p className="truncate text-lg font-bold">
-                    {cast.display_name || cast.name}
-                  </p>
-
-                  {cast.display_name &&
-                    cast.display_name !== cast.name && (
-                      <p className="mt-1 text-xs text-gray-400">
-                        管理名：{cast.name}
-                      </p>
-                    )}
-
-                  <p className="mt-1 text-sm text-gray-500">
-                    {currentView === "active"
-                      ? "在籍中"
-                      : "退店済み"}
-                  </p>
-                </button>
-
-                {cast.memo && (
-                  <p className="mt-2 rounded-lg bg-gray-100 p-2 text-xs text-gray-600">
-                    {cast.memo}
-                  </p>
-                )}
-              </div>
-
-              <div className="flex shrink-0 gap-2">
-                <button
-                  type="button"
-                  onClick={() => setEditingCast(cast)}
-                  className="rounded-lg bg-gray-100 px-3 py-2 text-xs font-bold text-gray-700"
-                >
-                  編集
-                </button>
-
-                {currentView === "active" ? (
-                  <button
-                    type="button"
-                    onClick={() =>
-                      handleDeactivateCast(cast)
-                    }
-                    className="rounded-lg bg-red-50 px-3 py-2 text-xs font-bold text-red-500"
-                  >
-                    退店
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() =>
-                      handleActivateCast(cast)
-                    }
-                    className="rounded-lg bg-green-50 px-3 py-2 text-xs font-bold text-green-600"
-                  >
-                    再表示
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
+            cast={cast}
+            isActive={currentView === "active"}
+            onOpenDetail={() => setSelectedCast(cast)}
+            onEdit={() => setEditingCast(cast)}
+            onDeactivate={() =>
+              handleDeactivateCast(cast)
+            }
+            onActivate={() =>
+              handleActivateCast(cast)
+            }
+          />
         ))}
 
         {casts.length === 0 && (
