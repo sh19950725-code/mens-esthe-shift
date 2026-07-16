@@ -1,5 +1,26 @@
 import { supabase } from "@/lib/supabase";
 
+type CastRelation = {
+  name: string;
+  display_name: string | null;
+};
+
+type RoomRelation = {
+  name: string;
+};
+
+type RawShift = {
+  id: string;
+  cast_id: string;
+  room_id: string | null;
+  work_date: string;
+  start_time: string;
+  end_time: string;
+  memo: string | null;
+  casts: CastRelation | CastRelation[] | null;
+  rooms: RoomRelation | RoomRelation[] | null;
+};
+
 export type Shift = {
   id: string;
   cast_id: string;
@@ -8,15 +29,8 @@ export type Shift = {
   start_time: string;
   end_time: string;
   memo: string | null;
-
-  casts: {
-    name: string;
-    display_name: string | null;
-  } | null;
-
-  rooms: {
-    name: string;
-  } | null;
+  casts: CastRelation | null;
+  rooms: RoomRelation | null;
 };
 
 export type CreateShiftInput = {
@@ -36,6 +50,41 @@ export type UpdateShiftInput = {
   end_time?: string;
   memo?: string | null;
 };
+
+type ConflictResult = {
+  ok: boolean;
+  message: string;
+};
+
+function getFirstRelation<T>(relation: T | T[] | null): T | null {
+  if (!relation) {
+    return null;
+  }
+
+  if (Array.isArray(relation)) {
+    return relation[0] ?? null;
+  }
+
+  return relation;
+}
+
+function normalizeShift(shift: RawShift): Shift {
+  return {
+    id: shift.id,
+    cast_id: shift.cast_id,
+    room_id: shift.room_id,
+    work_date: shift.work_date,
+    start_time: shift.start_time,
+    end_time: shift.end_time,
+    memo: shift.memo,
+    casts: getFirstRelation(shift.casts),
+    rooms: getFirstRelation(shift.rooms),
+  };
+}
+
+function normalizeShifts(data: RawShift[] | null): Shift[] {
+  return (data ?? []).map(normalizeShift);
+}
 
 export async function getShiftsByDate(
   workDate: string
@@ -65,7 +114,7 @@ export async function getShiftsByDate(
     throw error;
   }
 
-  return (data as Shift[]) || [];
+  return normalizeShifts(data as RawShift[] | null);
 }
 
 export async function getShiftsByDateRange(
@@ -99,7 +148,7 @@ export async function getShiftsByDateRange(
     throw error;
   }
 
-  return (data as Shift[]) || [];
+  return normalizeShifts(data as RawShift[] | null);
 }
 
 export async function checkShiftConflict(
@@ -109,7 +158,7 @@ export async function checkShiftConflict(
   startTime: string,
   endTime: string,
   excludeShiftId?: string
-) {
+): Promise<ConflictResult> {
   const { data, error } = await supabase
     .from("shifts")
     .select(`
@@ -148,9 +197,9 @@ export async function checkShiftConflict(
   });
 
   if (castConflict) {
-    const castData = Array.isArray(castConflict.casts)
-      ? castConflict.casts[0]
-      : castConflict.casts;
+    const castData = getFirstRelation(
+      castConflict.casts as CastRelation | CastRelation[] | null
+    );
 
     const castName =
       castData?.display_name ||
@@ -180,17 +229,15 @@ export async function checkShiftConflict(
     });
 
     if (roomConflict) {
-      const roomData = Array.isArray(roomConflict.rooms)
-        ? roomConflict.rooms[0]
-        : roomConflict.rooms;
+      const roomData = getFirstRelation(
+        roomConflict.rooms as RoomRelation | RoomRelation[] | null
+      );
 
-      const castData = Array.isArray(roomConflict.casts)
-        ? roomConflict.casts[0]
-        : roomConflict.casts;
+      const castData = getFirstRelation(
+        roomConflict.casts as CastRelation | CastRelation[] | null
+      );
 
-      const roomName =
-        roomData?.name ||
-        "選択した部屋";
+      const roomName = roomData?.name || "選択した部屋";
 
       const castName =
         castData?.display_name ||
