@@ -46,3 +46,30 @@ export async function deactivateCast(id: string): Promise<void> {
     throw error;
   }
 }
+
+export async function getInactiveCasts(): Promise<Cast[]> {
+  const { data, error } = await supabase
+    .from("casts")
+    .select("id, name, display_name, status, memo")
+    .eq("status", "inactive")
+    .order("created_at", { ascending: true });
+
+  if (error) {
+    throw error;
+  }
+
+  return (data as Cast[]) || [];
+}
+
+export async function activateCast(id: string): Promise<void> {
+  const { error } = await supabase
+    .from("casts")
+    .update({
+      status: "active",
+    })
+    .eq("id", id);
+
+  if (error) {
+    throw error;
+  }
+}

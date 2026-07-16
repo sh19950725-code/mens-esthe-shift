@@ -1,20 +1,27 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import Input from "@/components/ui/Input";
 import Button from "@/components/ui/Button";
+import Input from "@/components/ui/Input";
 import {
+  activateCast,
   createCast,
   deactivateCast,
   getActiveCasts,
+  getInactiveCasts,
   type Cast,
 } from "@/services/cast.service";
 
+type CastView = "active" | "inactive";
+
 export default function CastScreen() {
-  const [casts, setCasts] = useState<Cast[]>([]);
+  const [activeCasts, setActiveCasts] = useState<Cast[]>([]);
+  const [inactiveCasts, setInactiveCasts] = useState<Cast[]>([]);
   const [name, setName] = useState("");
   const [searchText, setSearchText] = useState("");
+  const [currentView, setCurrentView] = useState<CastView>("active");
   const [isAdding, setIsAdding] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     loadCasts();
@@ -22,29 +29,58 @@ export default function CastScreen() {
 
   async function loadCasts() {
     try {
-      const data = await getActiveCasts();
-      setCasts(data);
+      setIsLoading(true);
+
+      const [activeData, inactiveData] = await Promise.all([
+        getActiveCasts(),
+        getInactiveCasts(),
+      ]);
+
+      setActiveCasts(activeData);
+      setInactiveCasts(inactiveData);
     } catch (error) {
       console.error(error);
-      alert("キャスト取得に失敗しました");
+      alert("キャスト情報の取得に失敗しました");
+    } finally {
+      setIsLoading(false);
     }
   }
 
   async function addCast() {
-    const castName = name.trim();
+    const trimmedName = name.trim();
 
-    if (!castName) {
+    if (!trimmedName) {
       alert("キャスト名を入力してください");
+      return;
+    }
+
+    const allCasts = [...activeCasts, ...inactiveCasts];
+
+    const duplicateCast = allCasts.some((cast) => {
+      const castName = cast.name.trim().toLowerCase();
+      const displayName = (cast.display_name || "")
+        .trim()
+        .toLowerCase();
+      const inputName = trimmedName.toLowerCase();
+
+      return castName === inputName || displayName === inputName;
+    });
+
+    if (duplicateCast) {
+      alert(
+        "同じ名前のキャストがすでに登録されています。退店済み一覧も確認してください。"
+      );
       return;
     }
 
     try {
       setIsAdding(true);
 
-      await createCast(castName);
+      await createCast(trimmedName);
 
       setName("");
       await loadCasts();
+      setCurrentView("active");
     } catch (error) {
       console.error(error);
       alert("キャスト登録に失敗しました");
@@ -54,11 +90,15 @@ export default function CastScreen() {
   }
 
   async function handleDeactivateCast(cast: Cast) {
+    const displayName = cast.display_name || cast.name;
+
     const ok = confirm(
-      `${cast.display_name || cast.name}を退店にしますか？`
+      `${displayName}を退店扱いにしますか？\n過去のシフト情報は削除されません。`
     );
 
-    if (!ok) return;
+    if (!ok) {
+      return;
+    }
 
     try {
       await deactivateCast(cast.id);
@@ -69,95 +109,178 @@ export default function CastScreen() {
     }
   }
 
+  async function handleActivateCast(cast: Cast) {
+    const displayName = cast.display_name || cast.name;
+
+    const ok = confirm(`${displayName}を在籍中へ戻しますか？`);
+
+    if (!ok) {
+      return;
+    }
+
+    try {
+      await activateCast(cast.id);
+      await loadCasts();
+    } catch (error) {
+      console.error(error);
+      alert("再表示に失敗しました");
+    }
+  }
+
+  const casts =
+    currentView === "active" ? activeCasts : inactiveCasts;
+
   const filteredCasts = useMemo(() => {
-    const keyword = searchText.toLowerCase();
+    const keyword = searchText.trim().toLowerCase();
+
+    if (!keyword) {
+      return casts;
+    }
 
     return casts.filter((cast) => {
+      const nameText = cast.name.toLowerCase();
+      const displayNameText = (cast.display_name || "").toLowerCase();
+
       return (
-        cast.name.toLowerCase().includes(keyword) ||
-        (cast.display_name ?? "")
-          .toLowerCase()
-          .includes(keyword)
+        nameText.includes(keyword) ||
+        displayNameText.includes(keyword)
       );
     });
   }, [casts, searchText]);
 
-  return (
-    <div className="p-4">
-      <div className="mb-5">
-        <p className="text-sm text-gray-500">
-          キャスト管理
-        </p>
-
-        <h1 className="text-3xl font-bold">
-          キャスト一覧
-        </h1>
+  if (isLoading) {
+    return (
+      <div className="flex min-h-[60vh] items-center justify-center">
+        <p className="text-sm text-gray-500">読み込み中...</p>
       </div>
+    );
+  }
 
-      {/* 新規追加 */}
-      <div className="mb-4 flex gap-2">
-        <div className="flex-1">
-          <Input
-            value={name}
-            placeholder="キャスト名"
-            onChange={(e) => setName(e.target.value)}
-          />
+  return (
+    <>
+      <header className="mb-5">
+        <p className="text-sm text-gray-500">キャスト管理</p>
+
+        <h1 className="text-2xl font-bold">キャスト一覧</h1>
+
+        <p className="mt-1 text-sm text-gray-500">
+          在籍中 {activeCasts.length}名・退店済み{" "}
+          {inactiveCasts.length}名
+        </p>
+      </header>
+
+      <section className="mb-5 space-y-3">
+        <div className="flex items-stretch gap-2">
+          <div className="min-w-0 flex-1">
+            <Input
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+              placeholder="新しいキャスト名"
+            />
+          </div>
+
+          <Button
+            onClick={addCast}
+            disabled={isAdding}
+            className={`!w-auto shrink-0 px-5 ${
+              isAdding ? "cursor-not-allowed opacity-50" : ""
+            }`}
+          >
+            {isAdding ? "追加中" : "追加"}
+          </Button>
         </div>
 
-        <button
-          onClick={addCast}
-          disabled={isAdding}
-          className="rounded-xl bg-black px-6 text-white font-bold hover:bg-gray-800 disabled:opacity-50"
-        >
-          {isAdding ? "追加中" : "追加"}
-        </button>
-      </div>
-
-      {/* 検索 */}
-      <div className="mb-5">
         <Input
           value={searchText}
+          onChange={(event) => setSearchText(event.target.value)}
           placeholder="キャスト名で検索"
-          onChange={(e) => setSearchText(e.target.value)}
         />
-      </div>
+      </section>
 
-      {/* 一覧 */}
-      <div className="space-y-3">
+      <section className="mb-5 grid grid-cols-2 rounded-xl bg-gray-100 p-1">
+        <button
+          type="button"
+          onClick={() => setCurrentView("active")}
+          className={`rounded-lg px-3 py-2 text-sm font-bold ${
+            currentView === "active"
+              ? "bg-white text-black shadow-sm"
+              : "text-gray-500"
+          }`}
+        >
+          在籍中（{activeCasts.length}）
+        </button>
+
+        <button
+          type="button"
+          onClick={() => setCurrentView("inactive")}
+          className={`rounded-lg px-3 py-2 text-sm font-bold ${
+            currentView === "inactive"
+              ? "bg-white text-black shadow-sm"
+              : "text-gray-500"
+          }`}
+        >
+          退店済み（{inactiveCasts.length}）
+        </button>
+      </section>
+
+      <section className="space-y-3">
         {filteredCasts.map((cast) => (
           <div
             key={cast.id}
-            className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm"
+            className="rounded-2xl border bg-white p-4 shadow-sm"
           >
-            <div className="flex items-center justify-between">
+            <div className="flex items-start justify-between gap-3">
               <div>
-                <div className="text-lg font-bold">
+                <p className="text-lg font-bold">
                   {cast.display_name || cast.name}
-                </div>
+                </p>
 
-                <div className="text-sm text-gray-500">
-                  在籍中
-                </div>
+                <p className="mt-1 text-sm text-gray-500">
+                  {currentView === "active" ? "在籍中" : "退店済み"}
+                </p>
+
+                {cast.memo && (
+                  <p className="mt-2 rounded-lg bg-gray-100 p-2 text-xs text-gray-600">
+                    {cast.memo}
+                  </p>
+                )}
               </div>
 
-              <button
-                onClick={() =>
-                  handleDeactivateCast(cast)
-                }
-                className="rounded-lg bg-red-50 px-3 py-2 text-sm font-bold text-red-500 hover:bg-red-100"
-              >
-                退店
-              </button>
+              {currentView === "active" ? (
+                <button
+                  type="button"
+                  onClick={() => handleDeactivateCast(cast)}
+                  className="shrink-0 rounded-lg bg-red-50 px-3 py-2 text-xs font-bold text-red-500"
+                >
+                  退店
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => handleActivateCast(cast)}
+                  className="shrink-0 rounded-lg bg-green-50 px-3 py-2 text-xs font-bold text-green-600"
+                >
+                  再表示
+                </button>
+              )}
             </div>
           </div>
         ))}
 
-        {filteredCasts.length === 0 && (
-          <div className="rounded-xl bg-gray-50 p-4 text-center text-gray-500">
-            キャストが登録されていません
-          </div>
+        {casts.length === 0 && (
+          <p className="rounded-xl bg-gray-50 p-4 text-sm text-gray-500">
+            {currentView === "active"
+              ? "在籍中のキャストはいません。"
+              : "退店済みのキャストはいません。"}
+          </p>
         )}
-      </div>
-    </div>
+
+        {casts.length > 0 && filteredCasts.length === 0 && (
+          <p className="rounded-xl bg-gray-50 p-4 text-sm text-gray-500">
+            検索条件に一致するキャストはいません。
+          </p>
+        )}
+      </section>
+    </>
   );
 }
