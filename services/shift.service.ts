@@ -2,6 +2,8 @@ import { supabase } from "@/lib/supabase";
 
 export type Shift = {
   id: string;
+  cast_id: string;
+  room_id: string | null;
   work_date: string;
   start_time: string;
   end_time: string;
@@ -35,11 +37,15 @@ export type UpdateShiftInput = {
   memo?: string | null;
 };
 
-export async function getShiftsByDate(workDate: string) {
+export async function getShiftsByDate(
+  workDate: string
+): Promise<Shift[]> {
   const { data, error } = await supabase
     .from("shifts")
     .select(`
       id,
+      cast_id,
+      room_id,
       work_date,
       start_time,
       end_time,
@@ -65,11 +71,13 @@ export async function getShiftsByDate(workDate: string) {
 export async function getShiftsByDateRange(
   startDate: string,
   endDate: string
-) {
+): Promise<Shift[]> {
   const { data, error } = await supabase
     .from("shifts")
     .select(`
       id,
+      cast_id,
+      room_id,
       work_date,
       start_time,
       end_time,
@@ -99,22 +107,39 @@ export async function checkShiftConflict(
   roomId: string | null,
   workDate: string,
   startTime: string,
-  endTime: string
+  endTime: string,
+  excludeShiftId?: string
 ) {
   const { data, error } = await supabase
     .from("shifts")
-    .select("cast_id, room_id, start_time, end_time")
+    .select(`
+      id,
+      cast_id,
+      room_id,
+      start_time,
+      end_time,
+      casts (
+        name,
+        display_name
+      ),
+      rooms (
+        name
+      )
+    `)
     .eq("work_date", workDate);
 
   if (error) {
     throw error;
   }
 
-  const shifts = data ?? [];
+  const shifts = (data ?? []).filter(
+    (shift) => shift.id !== excludeShiftId
+  );
 
-  // キャスト重複チェック
   const castConflict = shifts.find((shift) => {
-    if (shift.cast_id !== castId) return false;
+    if (shift.cast_id !== castId) {
+      return false;
+    }
 
     return (
       startTime < shift.end_time &&
@@ -123,16 +148,30 @@ export async function checkShiftConflict(
   });
 
   if (castConflict) {
+    const castData = Array.isArray(castConflict.casts)
+      ? castConflict.casts[0]
+      : castConflict.casts;
+
+    const castName =
+      castData?.display_name ||
+      castData?.name ||
+      "選択したキャスト";
+
     return {
       ok: false,
-      message: "このキャストは同じ時間帯に別のシフトがあります。",
+      message:
+        `${castName}は` +
+        `${castConflict.start_time.slice(0, 5)}〜` +
+        `${castConflict.end_time.slice(0, 5)}に` +
+        "別のシフトが登録されています。",
     };
   }
 
-  // 部屋重複チェック
   if (roomId) {
     const roomConflict = shifts.find((shift) => {
-      if (shift.room_id !== roomId) return false;
+      if (shift.room_id !== roomId) {
+        return false;
+      }
 
       return (
         startTime < shift.end_time &&
@@ -141,9 +180,30 @@ export async function checkShiftConflict(
     });
 
     if (roomConflict) {
+      const roomData = Array.isArray(roomConflict.rooms)
+        ? roomConflict.rooms[0]
+        : roomConflict.rooms;
+
+      const castData = Array.isArray(roomConflict.casts)
+        ? roomConflict.casts[0]
+        : roomConflict.casts;
+
+      const roomName =
+        roomData?.name ||
+        "選択した部屋";
+
+      const castName =
+        castData?.display_name ||
+        castData?.name ||
+        "別のキャスト";
+
       return {
         ok: false,
-        message: "この部屋は同じ時間帯に使用されています。",
+        message:
+          `${roomName}は` +
+          `${roomConflict.start_time.slice(0, 5)}〜` +
+          `${roomConflict.end_time.slice(0, 5)}に` +
+          `${castName}が使用しています。`,
       };
     }
   }
@@ -154,7 +214,9 @@ export async function checkShiftConflict(
   };
 }
 
-export async function createShift(input: CreateShiftInput) {
+export async function createShift(
+  input: CreateShiftInput
+): Promise<void> {
   const { error } = await supabase
     .from("shifts")
     .insert(input);
@@ -167,7 +229,7 @@ export async function createShift(input: CreateShiftInput) {
 export async function updateShiftById(
   id: string,
   input: UpdateShiftInput
-) {
+): Promise<void> {
   const { error } = await supabase
     .from("shifts")
     .update(input)
@@ -178,7 +240,9 @@ export async function updateShiftById(
   }
 }
 
-export async function deleteShiftById(id: string) {
+export async function deleteShiftById(
+  id: string
+): Promise<void> {
   const { error } = await supabase
     .from("shifts")
     .delete()
