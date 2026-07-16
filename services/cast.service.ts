@@ -73,3 +73,23 @@ export async function activateCast(id: string): Promise<void> {
     throw error;
   }
 }
+
+export type UpdateCastInput = {
+  name?: string;
+  display_name?: string | null;
+  memo?: string | null;
+};
+
+export async function updateCastById(
+  id: string,
+  input: UpdateCastInput
+): Promise<void> {
+  const { error } = await supabase
+    .from("casts")
+    .update(input)
+    .eq("id", id);
+
+  if (error) {
+    throw error;
+  }
+}
