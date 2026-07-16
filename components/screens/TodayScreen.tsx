@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import ShiftCard from "@/components/cards/ShiftCard";
 import EditShiftModal from "@/components/ui/EditShiftModal";
-import { getShiftStatus } from "@/utils/time";
+import { getShiftStatus } from "@/lib/time";
 import {
   deleteShiftById,
   getShiftsByDate,
