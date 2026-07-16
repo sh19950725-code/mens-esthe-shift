@@ -93,3 +93,34 @@ export async function updateCastById(
     throw error;
   }
 }
+
+export async function checkCastNameConflict(
+  name: string,
+  excludeCastId?: string
+): Promise<boolean> {
+  const normalizedName = name.trim().toLowerCase();
+
+  const { data, error } = await supabase
+    .from("casts")
+    .select("id, name, display_name");
+
+  if (error) {
+    throw error;
+  }
+
+  return (data ?? []).some((cast) => {
+    if (cast.id === excludeCastId) {
+      return false;
+    }
+
+    const castName = cast.name.trim().toLowerCase();
+    const displayName = (cast.display_name || "")
+      .trim()
+      .toLowerCase();
+
+    return (
+      castName === normalizedName ||
+      displayName === normalizedName
+    );
+  });
+}

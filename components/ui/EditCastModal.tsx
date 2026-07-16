@@ -4,6 +4,7 @@ import { useState } from "react";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import {
+  checkCastNameConflict,
   updateCastById,
   type Cast,
 } from "@/services/cast.service";
@@ -37,9 +38,23 @@ export default function EditCastModal({
     try {
       setIsSaving(true);
 
+      const hasNameConflict =
+        await checkCastNameConflict(
+          trimmedName,
+          cast.id
+        );
+
+      if (hasNameConflict) {
+        alert(
+          "同じ名前のキャストがすでに登録されています"
+        );
+        return;
+      }
+
       await updateCastById(cast.id, {
         name: trimmedName,
-        display_name: displayName.trim() || null,
+        display_name:
+          displayName.trim() || null,
         memo: memo.trim() || null,
       });
 
@@ -54,19 +69,19 @@ export default function EditCastModal({
   }
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/40 px-4 py-8">
-      <div className="mx-auto max-w-md rounded-3xl bg-white p-5 shadow-xl">
-        <header className="mb-5">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+      <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-xl">
+        <header className="mb-6">
           <p className="text-sm text-gray-500">
             キャスト編集
           </p>
 
-          <h2 className="text-xl font-bold">
+          <h2 className="mt-1 text-2xl font-bold">
             {cast.display_name || cast.name}
           </h2>
         </header>
 
-        <section className="space-y-4">
+        <div className="space-y-4">
           <div>
             <label className="mb-1 block text-sm font-bold text-gray-700">
               管理名
@@ -74,7 +89,9 @@ export default function EditCastModal({
 
             <Input
               value={name}
-              onChange={(event) => setName(event.target.value)}
+              onChange={(e) =>
+                setName(e.target.value)
+              }
               placeholder="管理用の名前"
             />
           </div>
@@ -86,10 +103,10 @@ export default function EditCastModal({
 
             <Input
               value={displayName}
-              onChange={(event) =>
-                setDisplayName(event.target.value)
+              onChange={(e) =>
+                setDisplayName(e.target.value)
               }
-              placeholder="画面に表示する名前"
+              placeholder="表示用の名前"
             />
           </div>
 
@@ -100,32 +117,35 @@ export default function EditCastModal({
 
             <textarea
               value={memo}
-              onChange={(event) => setMemo(event.target.value)}
-              className="min-h-28 w-full rounded-xl border p-4"
+              onChange={(e) =>
+                setMemo(e.target.value)
+              }
               placeholder="管理メモ"
+              className="min-h-28 w-full rounded-xl border border-gray-300 p-3 outline-none focus:border-black"
             />
           </div>
+        </div>
 
+        <div className="mt-6 flex gap-3">
           <Button
             onClick={saveCast}
             disabled={isSaving}
-            className={
-              isSaving
-                ? "cursor-not-allowed opacity-50"
-                : ""
-            }
+            className="flex-1"
           >
-            {isSaving ? "保存中..." : "保存する"}
+            {isSaving
+              ? "保存中..."
+              : "保存"}
           </Button>
 
           <Button
-            onClick={onClose}
             variant="secondary"
+            onClick={onClose}
             disabled={isSaving}
+            className="flex-1"
           >
             キャンセル
           </Button>
-        </section>
+        </div>
       </div>
     </div>
   );
