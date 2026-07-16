@@ -33,3 +33,16 @@ export async function createCast(name: string) {
     throw error;
   }
 }
+
+export async function deactivateCast(id: string): Promise<void> {
+  const { error } = await supabase
+    .from("casts")
+    .update({
+      status: "inactive",
+    })
+    .eq("id", id);
+
+  if (error) {
+    throw error;
+  }
+}
