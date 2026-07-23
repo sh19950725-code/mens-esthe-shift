@@ -219,7 +219,7 @@ export default function AdminUsersScreen({
       return;
     }
     if (password.length < 8) {
-      alert("初期パスワードは8文字以上です");
+      alert("仮パスワードは8文字以上です");
       return;
     }
 
@@ -438,7 +438,7 @@ export default function AdminUsersScreen({
             onChange={(event) =>
               setPassword(event.target.value)
             }
-            placeholder="初期パスワード（8文字以上）"
+            placeholder="仮パスワード（8文字以上）"
             className="w-full rounded-xl border p-3"
           />
           <div>

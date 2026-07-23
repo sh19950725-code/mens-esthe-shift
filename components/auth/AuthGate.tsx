@@ -44,6 +44,9 @@ export default function AuthGate({ children }: AuthGateProps) {
   const [isSendingReset, setIsSendingReset] = useState(false);
   const [resetMessage, setResetMessage] = useState("");
   const lastActivityAt = useRef(0);
+  const mustChangePassword =
+    session?.user.user_metadata
+      ?.must_change_password === true;
 
   useEffect(() => {
     let isMounted = true;
@@ -192,8 +195,22 @@ export default function AuthGate({ children }: AuthGateProps) {
 
     try {
       setIsChangingPassword(true);
-      const { error } = await supabase.auth.updateUser({ password: newPassword });
+      const { data, error } =
+        await supabase.auth.updateUser({
+          password: newPassword,
+          data: {
+            must_change_password: false,
+          },
+        });
       if (error) throw error;
+      setSession((current) =>
+        current
+          ? {
+              ...current,
+              user: data.user,
+            }
+          : current
+      );
       setShowPasswordModal(false);
       setNewPassword("");
       setConfirmPassword("");
@@ -332,6 +349,7 @@ export default function AuthGate({ children }: AuthGateProps) {
           </button>
         </div>
       )}
+      {!mustChangePassword && (
       <div className="mx-auto flex w-full max-w-md justify-end gap-2 px-4 pt-3 sm:fixed sm:right-3 sm:top-3 sm:z-[80] sm:w-auto sm:max-w-none sm:px-0 sm:pt-0">
         <button
           type="button"
@@ -351,10 +369,15 @@ export default function AuthGate({ children }: AuthGateProps) {
           ログアウト
         </button>
       </div>
-      {showPasswordModal && (
+      )}
+      {(showPasswordModal || mustChangePassword) && (
         <div
           className="fixed inset-0 z-[100] flex items-end justify-center bg-black/50 p-4 sm:items-center"
-          onClick={isChangingPassword ? undefined : () => setShowPasswordModal(false)}
+          onClick={
+            isChangingPassword || mustChangePassword
+              ? undefined
+              : () => setShowPasswordModal(false)
+          }
         >
           <form
             onSubmit={changePassword}
@@ -363,9 +386,23 @@ export default function AuthGate({ children }: AuthGateProps) {
           >
             <div className="flex items-start justify-between gap-3">
               <div>
-                <p className="text-sm text-gray-500">アカウント設定</p>
-                <h2 className="text-xl font-bold text-gray-900">パスワード変更</h2>
+                <p className="text-sm text-gray-500">
+                  {mustChangePassword
+                    ? "初回ログイン"
+                    : "アカウント設定"}
+                </p>
+                <h2 className="text-xl font-bold text-gray-900">
+                  {mustChangePassword
+                    ? "新しいパスワードを設定"
+                    : "パスワード変更"}
+                </h2>
+                {mustChangePassword && (
+                  <p className="mt-2 text-sm font-medium text-gray-700">
+                    安全に利用するため、仮パスワードからご自身のパスワードへ変更してください。
+                  </p>
+                )}
               </div>
+              {!mustChangePassword && (
               <button
                 type="button"
                 onClick={() => setShowPasswordModal(false)}
@@ -375,6 +412,7 @@ export default function AuthGate({ children }: AuthGateProps) {
               >
                 ×
               </button>
+              )}
             </div>
 
             <div className="mt-5 space-y-4">
@@ -426,7 +464,7 @@ export default function AuthGate({ children }: AuthGateProps) {
           </form>
         </div>
       )}
-      {children}
+      {!mustChangePassword && children}
     </>
   );
 }
