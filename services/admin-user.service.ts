@@ -72,7 +72,6 @@ export async function getAdminUsers(): Promise<
 
 export async function createLoginUser(input: {
   email: string;
-  password: string;
   role: UserRole;
   stores: UserStoreSelection[];
 }): Promise<void> {

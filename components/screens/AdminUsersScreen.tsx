@@ -131,7 +131,6 @@ export default function AdminUsersScreen({
     useState("");
   const [searchText, setSearchText] = useState("");
   const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
   const [role, setRole] =
     useState<UserRole>("staff");
   const [selectedStores, setSelectedStores] =
@@ -209,7 +208,7 @@ export default function AdminUsersScreen({
       behavior: "smooth",
     });
     alert(
-      "申請メールアドレスを発行欄へ反映しました。初期パスワードと所属店舗を設定してください。"
+      "申請メールアドレスを発行欄へ反映しました。所属店舗を設定して招待メールを送信してください。"
     );
   }
 
@@ -218,27 +217,22 @@ export default function AdminUsersScreen({
       alert("メールアドレスを入力してください");
       return;
     }
-    if (password.length < 8) {
-      alert("仮パスワードは8文字以上です");
-      return;
-    }
-
     try {
       setIsCreating(true);
       await createLoginUser({
         email,
-        password,
         role,
         stores: toStoreSelections(selectedStores),
       });
       setEmail("");
-      setPassword("");
       setRole("staff");
       setSelectedStores({
         [currentStoreId]: "staff",
       });
       await loadUsers();
-      alert("ログインアカウントを発行しました");
+      alert(
+        "招待メールを送信しました。利用者がメール内のリンクからパスワードを設定します。"
+      );
     } catch (error) {
       console.error("アカウント発行エラー:", error);
       alert(
@@ -432,15 +426,9 @@ export default function AdminUsersScreen({
             placeholder="メールアドレス"
             className="w-full rounded-xl border p-3"
           />
-          <input
-            type="password"
-            value={password}
-            onChange={(event) =>
-              setPassword(event.target.value)
-            }
-            placeholder="仮パスワード（8文字以上）"
-            className="w-full rounded-xl border p-3"
-          />
+          <p className="rounded-xl border border-blue-100 bg-blue-50 p-3 text-sm text-blue-800">
+            仮パスワードは不要です。発行すると利用者へ招待メールが送信され、本人が最初のパスワードを設定します。
+          </p>
           <div>
             <select
               value={role}
@@ -469,8 +457,8 @@ export default function AdminUsersScreen({
             className="w-full rounded-xl bg-gray-900 p-3 font-bold text-white disabled:opacity-50"
           >
             {isCreating
-              ? "発行中..."
-              : "アカウントを発行"}
+              ? "招待メールを送信中..."
+              : "招待メールを送って発行"}
           </button>
         </div>
       </section>

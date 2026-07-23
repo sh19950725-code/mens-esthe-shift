@@ -426,12 +426,10 @@ export async function POST(request: Request) {
     const { adminClient } = await authorize(request);
     const body = (await request.json()) as {
       email?: string;
-      password?: string;
       role?: UserRole;
       stores?: StoreSelection[];
     };
     const email = body.email?.trim().toLowerCase() ?? "";
-    const password = body.password ?? "";
     const role: UserRole =
       body.role === "admin" ? "admin" : "staff";
     const storeSelections =
@@ -443,27 +441,23 @@ export async function POST(request: Request) {
       );
     }
 
-    if (password.length < 8) {
-      throw new Error(
-        "初期パスワードは8文字以上にしてください"
-      );
-    }
-
     if (storeSelections.length === 0) {
       throw new Error(
         "所属店舗を1つ以上選択してください"
       );
     }
 
+    const redirectTo = new URL(request.url).origin;
     const { data, error } =
-      await adminClient.auth.admin.createUser({
+      await adminClient.auth.admin.inviteUserByEmail(
         email,
-        password,
-        email_confirm: true,
-        user_metadata: {
-          must_change_password: true,
-        },
-      });
+        {
+          redirectTo,
+          data: {
+            must_change_password: true,
+          },
+        }
+      );
 
     if (error) throw error;
 
