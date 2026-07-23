@@ -237,12 +237,6 @@ export default function CalendarScreen() {
                   "未設定"}
               </p>
 
-              {shift.rooms?.name && (
-                <p className="mt-1 text-xs font-medium text-gray-500">
-                  部屋：{shift.rooms.name}
-                </p>
-              )}
-
               <p className="mt-1 text-sm text-gray-600">
                 {shift.start_time.slice(0, 5)}〜
                 {shift.end_time.slice(0, 5)}

@@ -11,8 +11,6 @@ import CastScreen from "@/components/screens/CastScreen";
 import DashboardScreen from "@/components/screens/DashboardScreen";
 import MonthScreen from "@/components/screens/MonthScreen";
 import RegisterScreen from "@/components/screens/RegisterScreen";
-import RoomScreen from "@/components/screens/RoomScreen";
-import RoomTimelineScreen from "@/components/screens/RoomTimelineScreen";
 import TodayScreen from "@/components/screens/TodayScreen";
 import WeekScreen from "@/components/screens/WeekScreen";
 import { getCurrentProfile } from "@/services/profile.service";
@@ -207,10 +205,6 @@ function ShiftManagementApp() {
               onOpenMonth={() => openTab("month")}
               onOpenRegister={() => openTab("register")}
               onOpenCasts={() => openTab("casts")}
-              onOpenRooms={() => openTab("rooms")}
-              onOpenRoomTimeline={() =>
-                openTab("roomTimeline")
-              }
             />
 
             {isAdmin && (
@@ -253,14 +247,6 @@ function ShiftManagementApp() {
         )}
         {activeTab === "register" && <RegisterScreen />}
         {activeTab === "casts" && <CastScreen />}
-        {activeTab === "rooms" && (
-          <RoomScreen onBack={() => openTab("home")} />
-        )}
-        {activeTab === "roomTimeline" && (
-          <RoomTimelineScreen
-            onBack={() => openTab("home")}
-          />
-        )}
         {activeTab === "audit" && isAdmin && (
           <AuditLogScreen onBack={() => openTab("home")} />
         )}

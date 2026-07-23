@@ -354,15 +354,6 @@ export default function MonthScreen({
                 (shift) => getStatus(shift) === "holiday"
               ).length;
 
-              const roomCount = new Set(
-                dayShifts
-                  .filter((shift) => getStatus(shift) !== "holiday")
-                  .map((shift) => shift.room_id)
-                  .filter(
-                    (roomId): roomId is string => Boolean(roomId)
-                  )
-              ).size;
-
               const isCurrentMonth =
                 date.getMonth() === currentMonthNumber &&
                 date.getFullYear() === currentYear;
@@ -438,18 +429,6 @@ export default function MonthScreen({
                         休 {holidayCount}
                       </p>
                     )}
-
-                    {roomCount > 0 && (
-                      <p
-                        className={
-                          isSelected
-                            ? "text-purple-200"
-                            : "text-purple-700"
-                        }
-                      >
-                        室 {roomCount}
-                      </p>
-                    )}
                   </div>
                 </button>
               );
@@ -502,13 +481,6 @@ export default function MonthScreen({
                           shift.end_time
                         )}
                       </p>
-
-                      {status !== "holiday" &&
-                        shift.rooms?.name && (
-                          <p className="mt-1 text-sm text-gray-500">
-                            部屋：{shift.rooms.name}
-                          </p>
-                        )}
 
                       {shift.memo && (
                         <p className="mt-2 whitespace-pre-wrap text-xs text-gray-500">

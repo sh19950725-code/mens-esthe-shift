@@ -11,7 +11,7 @@ type AuditLogScreenProps = {
   onBack?: () => void;
 };
 
-type TableFilter = "all" | "shifts" | "casts" | "rooms" | "profiles";
+type TableFilter = "all" | "shifts" | "casts" | "profiles";
 type ActionFilter = "all" | AuditAction;
 
 const hiddenFields = new Set(["created_at", "updated_at"]);
@@ -44,8 +44,6 @@ function getTableLabel(tableName: string): string {
       return "シフト";
     case "casts":
       return "キャスト";
-    case "rooms":
-      return "部屋";
     case "profiles":
       return "スタッフ権限";
     default:
@@ -76,9 +74,6 @@ function getRecordSummary(log: AuditLog): string {
 
   if (log.table_name === "casts") {
     return formatValue(data.display_name || data.name);
-  }
-  if (log.table_name === "rooms") {
-    return formatValue(data.name);
   }
   if (log.table_name === "profiles") {
     const email = formatValue(data.email);
@@ -192,7 +187,6 @@ export default function AuditLogScreen({ onBack }: AuditLogScreenProps) {
               ["all", "すべて"],
               ["shifts", "シフト"],
               ["casts", "キャスト"],
-              ["rooms", "部屋"],
               ["profiles", "権限"],
             ] as const
           ).map(([value, label]) => (

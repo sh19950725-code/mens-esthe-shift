@@ -19,10 +19,6 @@ import {
   getActiveCasts,
   type Cast,
 } from "@/services/cast.service";
-import {
-  getActiveRooms,
-  type Room,
-} from "@/services/room.service";
 
 type EditShiftModalProps = {
   shift: Shift;
@@ -36,10 +32,8 @@ export default function EditShiftModal({
   onSaved,
 }: EditShiftModalProps) {
   const [casts, setCasts] = useState<Cast[]>([]);
-  const [rooms, setRooms] = useState<Room[]>([]);
   const [castId, setCastId] = useState(shift.cast_id);
   const [workDate, setWorkDate] = useState(shift.work_date);
-  const [roomId, setRoomId] = useState(shift.room_id || "");
   const [startTime, setStartTime] = useState(
     shift.start_time.slice(0, 5)
   );
@@ -62,14 +56,10 @@ export default function EditShiftModal({
         setIsLoading(true);
         setErrorMessage("");
 
-        const [castData, roomData] = await Promise.all([
-          getActiveCasts(),
-          getActiveRooms(),
-        ]);
+        const castData = await getActiveCasts();
 
         if (!isCancelled) {
           setCasts(castData);
-          setRooms(roomData);
         }
       } catch (error) {
         console.error("編集画面データ取得エラー:", error);
@@ -149,8 +139,7 @@ export default function EditShiftModal({
     try {
       setIsSaving(true);
 
-      const normalizedRoomId =
-        status === "holiday" ? null : roomId || null;
+      const normalizedRoomId = null;
 
       if (status !== "holiday") {
         const conflict = await checkShiftConflict(
@@ -308,7 +297,6 @@ export default function EditShiftModal({
                   setStatus(nextStatus);
 
                   if (nextStatus === "holiday") {
-                    setRoomId("");
                   }
                 }}
                 disabled={isSaving}
@@ -319,29 +307,7 @@ export default function EditShiftModal({
               </Select>
             </div>
 
-            {status !== "holiday" && (
-              <div>
-                <label className="mb-1 block text-sm font-bold text-gray-700">
-                  部屋
-                </label>
 
-                <Select
-                  value={roomId}
-                  onChange={(event) =>
-                    setRoomId(event.target.value)
-                  }
-                  disabled={isSaving}
-                >
-                  <option value="">部屋を指定しない</option>
-
-                  {rooms.map((room) => (
-                    <option key={room.id} value={room.id}>
-                      {room.name}
-                    </option>
-                  ))}
-                </Select>
-              </div>
-            )}
 
             <div className="grid grid-cols-2 gap-3">
               <div>

@@ -12,10 +12,6 @@ import {
   type Cast,
 } from "@/services/cast.service";
 import {
-  getActiveRooms,
-  type Room,
-} from "@/services/room.service";
-import {
   checkShiftConflict,
   createShift,
   createShiftsBulk,
@@ -57,7 +53,6 @@ function getOneMonthLaterDate(): string {
 export default function RegisterScreen() {
   const [mode, setMode] = useState<RegisterMode>("single");
   const [casts, setCasts] = useState<Cast[]>([]);
-  const [rooms, setRooms] = useState<Room[]>([]);
   const [castId, setCastId] = useState("");
   const [roomId, setRoomId] = useState("");
   const [workDate, setWorkDate] = useState(getTodayDate());
@@ -172,12 +167,8 @@ export default function RegisterScreen() {
   async function loadInitialData() {
     try {
       setIsLoading(true);
-      const [castData, roomData] = await Promise.all([
-        getActiveCasts(),
-        getActiveRooms(),
-      ]);
+      const castData = await getActiveCasts();
       setCasts(castData);
-      setRooms(roomData);
     } catch (error) {
       console.error("登録画面データ取得エラー:", error);
       alert("キャストまたは部屋情報の取得に失敗しました");
@@ -246,7 +237,7 @@ export default function RegisterScreen() {
       if (status !== "holiday") {
         const result = await checkShiftConflict(
           castId,
-          roomId || null,
+          null,
           workDate,
           startTime,
           endTime
@@ -260,7 +251,7 @@ export default function RegisterScreen() {
       await createShift({
         cast_id: castId,
         room_id:
-          status === "holiday" ? null : roomId || null,
+          null,
         work_date: workDate,
         start_time: startTime,
         end_time: endTime,
@@ -299,7 +290,7 @@ export default function RegisterScreen() {
       const result = await createShiftsBulk({
         cast_id: castId,
         room_id:
-          status === "holiday" ? null : roomId || null,
+          null,
         start_date: startDate,
         end_date: endDate,
         start_time: startTime,
@@ -658,23 +649,7 @@ export default function RegisterScreen() {
           </Select>
         </Field>
 
-        {status !== "holiday" && (
-          <Field label="部屋">
-            <Select
-              value={roomId}
-              onChange={(event) =>
-                setRoomId(event.target.value)
-              }
-            >
-              <option value="">部屋を指定しない</option>
-              {rooms.map((room) => (
-                <option key={room.id} value={room.id}>
-                  {room.name}
-                </option>
-              ))}
-            </Select>
-          </Field>
-        )}
+
 
         {status !== "holiday" && (
           <ShiftTimeTemplates
@@ -757,7 +732,7 @@ export default function RegisterScreen() {
           />
           <span>
             <span className="block text-sm font-bold text-gray-800">
-              登録後もキャストと部屋を保持
+              登録後もキャストを保持
             </span>
             <span className="mt-0.5 block text-xs text-gray-500">
               同じキャストのシフトを続けて登録するときに便利です

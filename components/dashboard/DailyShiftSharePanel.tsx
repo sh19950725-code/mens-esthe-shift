@@ -59,15 +59,12 @@ function createShareText(date: string, shifts: Shift[]): string {
   ];
 
   working.forEach((shift) => {
-    const room = shift.rooms?.name
-      ? ` / ${shift.rooms.name}`
-      : " / 部屋未設定";
     const tentative =
       shift.status === "tentative" ? "（仮）" : "";
     lines.push(
       `・${getCastName(shift)}${tentative} ${formatTime(
         shift
-      )}${room}`
+      )}`
     );
   });
 
@@ -95,11 +92,6 @@ function createPrintHtml(date: string, shifts: Shift[]): string {
           <td>${escapeHtml(getCastName(shift))}</td>
           <td>${escapeHtml(getStatusLabel(shift))}</td>
           <td>${escapeHtml(formatTime(shift))}</td>
-          <td>${escapeHtml(
-            shift.status === "holiday"
-              ? ""
-              : shift.rooms?.name || "未設定"
-          )}</td>
           <td>${escapeHtml(shift.memo || "")}</td>
         </tr>`
     )
@@ -126,8 +118,7 @@ function createPrintHtml(date: string, shifts: Shift[]): string {
     <table>
       <thead>
         <tr>
-          <th>キャスト</th><th>状態</th><th>時間</th>
-          <th>部屋</th><th>メモ</th>
+          <th>キャスト</th><th>状態</th><th>時間</th><th>メモ</th>
         </tr>
       </thead>
       <tbody>${rows}</tbody>

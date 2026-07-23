@@ -62,7 +62,6 @@ function createCsv(shifts: Shift[]): string {
     "出勤時間",
     "退勤時間",
     "状態",
-    "部屋",
     "メモ",
   ];
 
@@ -72,9 +71,6 @@ function createCsv(shifts: Shift[]): string {
     shift.start_time.slice(0, 5),
     shift.end_time.slice(0, 5),
     getStatusLabel(shift.status),
-    shift.status === "holiday"
-      ? ""
-      : shift.rooms?.name ?? "",
     shift.memo ?? "",
   ]);
 

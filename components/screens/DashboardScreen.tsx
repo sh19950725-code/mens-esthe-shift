@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useState } from "react";
 import CastWorkloadPanel from "@/components/dashboard/CastWorkloadPanel";
 import DailyShiftSharePanel from "@/components/dashboard/DailyShiftSharePanel";
-import RoomUtilizationPanel from "@/components/dashboard/RoomUtilizationPanel";
 import ShiftCsvExportPanel from "@/components/dashboard/ShiftCsvExportPanel";
 import ShiftIssuePanel from "@/components/dashboard/ShiftIssuePanel";
 import StaffingAlertPanel from "@/components/dashboard/StaffingAlertPanel";
@@ -18,8 +17,6 @@ type DashboardScreenProps = {
   onOpenMonth?: () => void;
   onOpenRegister?: () => void;
   onOpenCasts?: () => void;
-  onOpenRooms?: () => void;
-  onOpenRoomTimeline?: () => void;
 };
 
 type MenuCardProps = {
@@ -68,8 +65,6 @@ export default function DashboardScreen({
   onOpenMonth,
   onOpenRegister,
   onOpenCasts,
-  onOpenRooms,
-  onOpenRoomTimeline,
 }: DashboardScreenProps) {
   const [summary, setSummary] =
     useState<DashboardSummary | null>(null);
@@ -221,7 +216,7 @@ export default function DashboardScreen({
         </div>
       </section>
 
-      <section className="mb-5 grid grid-cols-2 gap-3">
+      <section className="mb-5 grid grid-cols-1 gap-3">
         <div className="rounded-2xl bg-green-50 p-4">
           <p className="text-sm font-bold text-green-700">
             現在出勤中
@@ -231,23 +226,7 @@ export default function DashboardScreen({
             <span className="ml-1 text-base">名</span>
           </p>
         </div>
-        <button
-          type="button"
-          onClick={onOpenRooms}
-          className="rounded-2xl bg-purple-50 p-4 text-left"
-        >
-          <p className="text-sm font-bold text-purple-700">
-            空き部屋
-          </p>
-          <p className="mt-3 text-3xl font-bold text-purple-800">
-            {summary.availableRoomCount}
-            <span className="ml-1 text-base">室</span>
-          </p>
-          <p className="mt-1 text-xs text-purple-700">
-            使用中 {summary.usedRoomCount} /{" "}
-            {summary.totalRoomCount}室
-          </p>
-        </button>
+        
       </section>
 
       <section className="mb-5">
@@ -280,18 +259,8 @@ export default function DashboardScreen({
             description={`有効 ${summary.activeCastCount}名`}
             onClick={onOpenCasts}
           />
-          <MenuCard
-            icon="🏠"
-            title="部屋管理"
-            description={`有効 ${summary.totalRoomCount}室`}
-            onClick={onOpenRooms}
-          />
-          <MenuCard
-            icon="📊"
-            title="部屋タイムライン"
-            description="部屋ごとの稼働状況"
-            onClick={onOpenRoomTimeline}
-          />
+          
+          
         </div>
       </section>
 
@@ -328,12 +297,6 @@ export default function DashboardScreen({
                     {formatTime(shift.start_time)}〜
                     {formatTime(shift.end_time)}
                   </p>
-                  {shift.rooms?.name &&
-                    shift.status !== "holiday" && (
-                      <p className="mt-1 text-xs text-gray-500">
-                        部屋：{shift.rooms.name}
-                      </p>
-                    )}
                 </div>
                 <span className="shrink-0 text-xs font-bold text-gray-500">
                   {shift.status === "tentative"
@@ -359,7 +322,6 @@ export default function DashboardScreen({
         <DailyShiftSharePanel />
         <ShiftIssuePanel onOpenWeek={onOpenWeek} />
         <StaffingAlertPanel />
-        <RoomUtilizationPanel />
         <ShiftCsvExportPanel />
       </div>
     </>

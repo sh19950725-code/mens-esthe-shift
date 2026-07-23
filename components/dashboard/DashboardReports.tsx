@@ -4,21 +4,17 @@ import { useState } from "react";
 import CastWorkloadPanel from "@/components/dashboard/CastWorkloadPanel";
 import DailyShiftSharePanel from "@/components/dashboard/DailyShiftSharePanel";
 import InstallAppPanel from "@/components/dashboard/InstallAppPanel";
-import RoomUtilizationPanel from "@/components/dashboard/RoomUtilizationPanel";
 import ShiftCsvExportPanel from "@/components/dashboard/ShiftCsvExportPanel";
 import ShiftIssuePanel from "@/components/dashboard/ShiftIssuePanel";
 import StaffingAlertPanel from "@/components/dashboard/StaffingAlertPanel";
 import SystemHealthPanel from "@/components/dashboard/SystemHealthPanel";
-import UnassignedRoomPanel from "@/components/dashboard/UnassignedRoomPanel";
 
 type ReportKey =
   | "issues"
   | "install"
   | "health"
-  | "unassigned"
   | "staffing"
   | "share"
-  | "rooms"
   | "casts"
   | "csv";
 
@@ -51,12 +47,6 @@ const REPORTS: {
     description: "接続やデータ取得を確認",
   },
   {
-    key: "unassigned",
-    icon: "🔧",
-    title: "部屋未設定を修正",
-    description: "部屋を選んでその場で保存",
-  },
-  {
     key: "staffing",
     icon: "👥",
     title: "人員不足アラート",
@@ -67,12 +57,6 @@ const REPORTS: {
     icon: "📤",
     title: "シフト共有・印刷",
     description: "LINE用文章や日次表を作成",
-  },
-  {
-    key: "rooms",
-    icon: "🏠",
-    title: "部屋稼働率",
-    description: "部屋ごとの使用時間を集計",
   },
   {
     key: "casts",
@@ -102,14 +86,10 @@ export default function DashboardReports({
         return <InstallAppPanel />;
       case "health":
         return <SystemHealthPanel />;
-      case "unassigned":
-        return <UnassignedRoomPanel />;
       case "staffing":
         return <StaffingAlertPanel />;
       case "share":
         return <DailyShiftSharePanel />;
-      case "rooms":
-        return <RoomUtilizationPanel />;
       case "casts":
         return <CastWorkloadPanel />;
       case "csv":

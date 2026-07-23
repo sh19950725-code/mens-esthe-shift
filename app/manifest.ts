@@ -4,7 +4,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: "店舗シフト管理",
     short_name: "シフト管理",
-    description: "店舗スタッフ向けのシフト・キャスト・部屋管理システム",
+    description: "店舗スタッフ向けのシフト・キャスト管理システム",
     start_url: "/",
     scope: "/",
     display: "standalone",

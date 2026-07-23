@@ -269,13 +269,6 @@ export default function CastDetailModal({
                           {shift.end_time.slice(0, 5)}
                         </p>
                       )}
-
-                      {shift.status !== "holiday" &&
-                        shift.rooms?.name && (
-                          <p className="mt-1 text-xs text-gray-500">
-                            部屋：{shift.rooms.name}
-                          </p>
-                        )}
                     </div>
 
                     <span

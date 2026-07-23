@@ -72,7 +72,6 @@ function getStatusClasses(status?: ShiftCardStatus) {
 
 export default function ShiftCard({
   name,
-  room,
   time,
   status = "before",
   statusLabel,
@@ -136,15 +135,6 @@ export default function ShiftCard({
       </div>
 
       <div className="mt-3 space-y-2 pl-[18px] text-sm text-gray-600">
-        {room && (
-          <div>
-            <span
-              className={`inline-flex rounded-lg px-2.5 py-1 text-xs font-bold ${statusClasses.room}`}
-            >
-              部屋：{room}
-            </span>
-          </div>
-        )}
 
         {memo && (
           <p className="whitespace-pre-wrap break-words rounded-xl bg-white/70 p-3 text-sm leading-6 text-gray-600">

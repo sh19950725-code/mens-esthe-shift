@@ -303,7 +303,7 @@ export default function CopyDayShiftsModal({
                     </p>
                     <p className="mt-0.5 text-xs text-gray-500">
                       {shift.start_time.slice(0, 5)}〜{shift.end_time.slice(0, 5)}
-                      {shift.rooms?.name ? `・${shift.rooms.name}` : ""}
+                      
                     </p>
                   </div>
                 </label>
@@ -479,7 +479,7 @@ export default function CopyDayShiftsModal({
         )}
 
         <p className="mt-3 text-xs text-gray-500">
-          コピー先でキャストまたは部屋の時間が重なるシフトは、安全のため登録せずスキップします。
+          コピー先でキャストの時間が重なるシフトは、安全のため登録せずスキップします。
         </p>
       </div>
     </div>

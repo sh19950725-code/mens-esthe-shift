@@ -20,7 +20,7 @@ export const metadata: Metadata = {
     template: "%s | 店舗シフト管理",
   },
   description:
-    "店舗スタッフ向けのシフト・キャスト・部屋管理システム",
+    "店舗スタッフ向けのシフト・キャスト管理システム",
   applicationName: "店舗シフト管理",
   manifest: "/manifest.webmanifest",
   robots: {
