@@ -6,7 +6,7 @@ import {
   type Shift,
 } from "@/services/shift.service";
 
-function formatLocalDate(date: Date) {
+function formatLocalDate(date: Date): string {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
@@ -25,42 +25,64 @@ function getMonthRange(year: number, month: number) {
 }
 
 export default function CalendarScreen() {
-  const today = new Date();
-
-  const [currentYear, setCurrentYear] = useState(today.getFullYear());
-  const [currentMonth, setCurrentMonth] = useState(today.getMonth());
+  const [currentYear, setCurrentYear] = useState(
+    () => new Date().getFullYear()
+  );
+  const [currentMonth, setCurrentMonth] = useState(
+    () => new Date().getMonth()
+  );
   const [shifts, setShifts] = useState<Shift[]>([]);
   const [selectedDate, setSelectedDate] = useState(
-    formatLocalDate(today)
+    () => formatLocalDate(new Date())
   );
+  const [isLoading, setIsLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState("");
 
   useEffect(() => {
-    loadMonthShifts();
-  }, [currentYear, currentMonth]);
+    let isCancelled = false;
 
-  async function loadMonthShifts() {
-    try {
-      const { startDate, endDate } = getMonthRange(
-        currentYear,
-        currentMonth
-      );
+    async function loadMonthShifts() {
+      try {
+        setIsLoading(true);
+        setErrorMessage("");
 
-      const data = await getShiftsByDateRange(startDate, endDate);
-      setShifts(data);
-    } catch (error) {
-      console.error(error);
-      alert("月間シフトの取得に失敗しました");
+        const { startDate, endDate } = getMonthRange(
+          currentYear,
+          currentMonth
+        );
+
+        const data = await getShiftsByDateRange(startDate, endDate);
+
+        if (!isCancelled) {
+          setShifts(data);
+        }
+      } catch (error) {
+        console.error("月間シフト取得エラー:", error);
+
+        if (!isCancelled) {
+          setErrorMessage("月間シフトの取得に失敗しました");
+        }
+      } finally {
+        if (!isCancelled) {
+          setIsLoading(false);
+        }
+      }
     }
-  }
+
+    void loadMonthShifts();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [currentYear, currentMonth]);
 
   const calendarDays = useMemo(() => {
     const firstDay = new Date(currentYear, currentMonth, 1);
     const lastDay = new Date(currentYear, currentMonth + 1, 0);
-
     const mondayStartOffset = (firstDay.getDay() + 6) % 7;
     const days: Array<Date | null> = [];
 
-    for (let i = 0; i < mondayStartOffset; i += 1) {
+    for (let index = 0; index < mondayStartOffset; index += 1) {
       days.push(null);
     }
 
@@ -71,8 +93,14 @@ export default function CalendarScreen() {
     return days;
   }, [currentYear, currentMonth]);
 
-  const selectedShifts = shifts.filter(
-    (shift) => shift.work_date === selectedDate
+  const selectedShifts = useMemo(
+    () =>
+      shifts
+        .filter((shift) => shift.work_date === selectedDate)
+        .sort((first, second) =>
+          first.start_time.localeCompare(second.start_time)
+        ),
+    [selectedDate, shifts]
   );
 
   function goToPreviousMonth() {
@@ -105,8 +133,10 @@ export default function CalendarScreen() {
       <section className="mb-4 rounded-2xl border bg-white p-4">
         <div className="mb-4 flex items-center justify-between">
           <button
+            type="button"
             onClick={goToPreviousMonth}
             className="rounded-lg bg-gray-100 px-4 py-2 font-bold"
+            aria-label="前月を表示"
           >
             ←
           </button>
@@ -116,8 +146,10 @@ export default function CalendarScreen() {
           </h2>
 
           <button
+            type="button"
             onClick={goToNextMonth}
             className="rounded-lg bg-gray-100 px-4 py-2 font-bold"
+            aria-label="翌月を表示"
           >
             →
           </button>
@@ -129,47 +161,60 @@ export default function CalendarScreen() {
           <span>水</span>
           <span>木</span>
           <span>金</span>
-          <span>土</span>
-          <span>日</span>
+          <span className="text-blue-600">土</span>
+          <span className="text-red-600">日</span>
         </div>
 
-        <div className="grid grid-cols-7 gap-1">
-          {calendarDays.map((date, index) => {
-            if (!date) {
-              return <div key={`empty-${index}`} className="h-14" />;
-            }
+        {errorMessage && (
+          <p className="mb-3 rounded-xl bg-red-50 p-3 text-sm text-red-700">
+            {errorMessage}
+          </p>
+        )}
 
-            const dateText = formatLocalDate(date);
-            const shiftCount = shifts.filter(
-              (shift) => shift.work_date === dateText
-            ).length;
-            const isSelected = selectedDate === dateText;
+        {isLoading ? (
+          <div className="flex min-h-60 items-center justify-center">
+            <p className="text-sm text-gray-500">読み込み中...</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-7 gap-1">
+            {calendarDays.map((date, index) => {
+              if (!date) {
+                return <div key={`empty-${index}`} className="h-14" />;
+              }
 
-            return (
-              <button
-                key={dateText}
-                onClick={() => setSelectedDate(dateText)}
-                className={`flex h-14 flex-col items-center justify-center rounded-xl text-sm ${
-                  isSelected
-                    ? "bg-black text-white"
-                    : "bg-gray-50 text-black"
-                }`}
-              >
-                <span className="font-bold">{date.getDate()}</span>
+              const dateText = formatLocalDate(date);
+              const shiftCount = shifts.filter(
+                (shift) => shift.work_date === dateText
+              ).length;
+              const isSelected = selectedDate === dateText;
 
-                {shiftCount > 0 && (
-                  <span
-                    className={`mt-1 text-[10px] ${
-                      isSelected ? "text-white" : "text-gray-500"
-                    }`}
-                  >
-                    {shiftCount}名
-                  </span>
-                )}
-              </button>
-            );
-          })}
-        </div>
+              return (
+                <button
+                  key={dateText}
+                  type="button"
+                  onClick={() => setSelectedDate(dateText)}
+                  className={`flex h-14 flex-col items-center justify-center rounded-xl text-sm ${
+                    isSelected
+                      ? "bg-black text-white"
+                      : "bg-gray-50 text-black"
+                  }`}
+                >
+                  <span className="font-bold">{date.getDate()}</span>
+
+                  {shiftCount > 0 && (
+                    <span
+                      className={`mt-1 text-[10px] ${
+                        isSelected ? "text-white" : "text-gray-500"
+                      }`}
+                    >
+                      {shiftCount}名
+                    </span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+        )}
       </section>
 
       <section>
@@ -182,40 +227,36 @@ export default function CalendarScreen() {
 
         <div className="space-y-2">
           {selectedShifts.map((shift) => (
-  <div
-    key={shift.id}
-    className="rounded-xl border bg-white p-3"
-  >
-    <div className="flex items-start justify-between gap-3">
-      <div>
-        <p className="font-bold">
-          {shift.casts?.display_name ||
-            shift.casts?.name ||
-            "未設定"}
-        </p>
+            <div
+              key={shift.id}
+              className="rounded-xl border bg-white p-3"
+            >
+              <p className="font-bold">
+                {shift.casts?.display_name ||
+                  shift.casts?.name ||
+                  "未設定"}
+              </p>
 
-        {shift.rooms?.name && (
-          <p className="mt-1 text-xs font-medium text-gray-500">
-            🏠 {shift.rooms.name}
-          </p>
-        )}
+              {shift.rooms?.name && (
+                <p className="mt-1 text-xs font-medium text-gray-500">
+                  部屋：{shift.rooms.name}
+                </p>
+              )}
 
-        <p className="mt-1 text-sm text-gray-600">
-          🕒 {shift.start_time.slice(0, 5)}〜
-          {shift.end_time.slice(0, 5)}
-        </p>
+              <p className="mt-1 text-sm text-gray-600">
+                {shift.start_time.slice(0, 5)}〜
+                {shift.end_time.slice(0, 5)}
+              </p>
 
-        {shift.memo && (
-          <p className="mt-2 rounded-lg bg-gray-100 p-2 text-xs text-gray-600">
-            {shift.memo}
-          </p>
-        )}
-      </div>
-    </div>
-  </div>
-))}
+              {shift.memo && (
+                <p className="mt-2 whitespace-pre-wrap rounded-lg bg-gray-100 p-2 text-xs text-gray-600">
+                  {shift.memo}
+                </p>
+              )}
+            </div>
+          ))}
 
-          {selectedShifts.length === 0 && (
+          {!isLoading && selectedShifts.length === 0 && (
             <p className="rounded-xl bg-gray-50 p-4 text-sm text-gray-500">
               この日のシフトはありません。
             </p>

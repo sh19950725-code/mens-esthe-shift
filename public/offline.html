@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="ja">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta name="theme-color" content="#111827" />
+    <title>オフライン | 店舗シフト管理</title>
+    <style>
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: grid;
+        place-items: center;
+        padding: 24px;
+        background: #f3f4f6;
+        color: #111827;
+        font-family: system-ui, -apple-system, sans-serif;
+      }
+      main {
+        width: 100%;
+        max-width: 380px;
+        padding: 28px;
+        border-radius: 24px;
+        background: white;
+        text-align: center;
+        box-shadow: 0 12px 30px rgb(0 0 0 / 8%);
+      }
+      .icon {
+        display: grid;
+        place-items: center;
+        width: 64px;
+        height: 64px;
+        margin: 0 auto 18px;
+        border-radius: 18px;
+        background: #111827;
+        color: white;
+        font-size: 30px;
+      }
+      h1 { margin: 0; font-size: 22px; }
+      p { margin: 12px 0 0; color: #6b7280; line-height: 1.7; font-size: 14px; }
+      button {
+        width: 100%;
+        margin-top: 22px;
+        border: 0;
+        border-radius: 14px;
+        padding: 13px;
+        background: #111827;
+        color: white;
+        font-weight: 700;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <div class="icon">↻</div>
+      <h1>インターネットに接続できません</h1>
+      <p>
+        通信状態を確認してから、もう一度読み込んでください。
+        データの登録・編集にはインターネット接続が必要です。
+      </p>
+      <button type="button" onclick="location.reload()">もう一度読み込む</button>
+    </main>
+  </body>
+</html>

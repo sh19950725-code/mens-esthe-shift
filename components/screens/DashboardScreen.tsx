@@ -1,281 +1,367 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { getActiveCasts } from "@/services/cast.service";
-import { getActiveRooms } from "@/services/room.service";
+import { useCallback, useEffect, useState } from "react";
+import CastWorkloadPanel from "@/components/dashboard/CastWorkloadPanel";
+import DailyShiftSharePanel from "@/components/dashboard/DailyShiftSharePanel";
+import RoomUtilizationPanel from "@/components/dashboard/RoomUtilizationPanel";
+import ShiftCsvExportPanel from "@/components/dashboard/ShiftCsvExportPanel";
+import ShiftIssuePanel from "@/components/dashboard/ShiftIssuePanel";
+import StaffingAlertPanel from "@/components/dashboard/StaffingAlertPanel";
 import {
-  getShiftsByDate,
-  type Shift,
-} from "@/services/shift.service";
-import { getShiftStatus } from "@/lib/time";
+  getDashboardSummary,
+  type DashboardSummary,
+} from "@/services/dashboard.service";
 
 type DashboardScreenProps = {
-  onOpenRooms: () => void;
+  onOpenToday?: () => void;
+  onOpenWeek?: () => void;
+  onOpenMonth?: () => void;
+  onOpenRegister?: () => void;
+  onOpenCasts?: () => void;
+  onOpenRooms?: () => void;
+  onOpenRoomTimeline?: () => void;
 };
 
-function formatLocalDate(date: Date) {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
+type MenuCardProps = {
+  icon: string;
+  title: string;
+  description: string;
+  onClick?: () => void;
+};
 
-  return `${year}-${month}-${day}`;
+function formatDateText(dateText: string) {
+  const [year, month, day] = dateText.split("-");
+  return `${year}年${Number(month)}月${Number(day)}日`;
+}
+
+function formatTime(time: string) {
+  return time.slice(0, 5);
+}
+
+function MenuCard({
+  icon,
+  title,
+  description,
+  onClick,
+}: MenuCardProps) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className="rounded-2xl border border-gray-200 bg-white p-4 text-left shadow-sm transition hover:bg-gray-50 active:scale-[0.99]"
+    >
+      <div className="flex items-center justify-between">
+        <span className="text-2xl">{icon}</span>
+        <span className="text-gray-300">›</span>
+      </div>
+      <p className="mt-3 font-bold text-gray-900">{title}</p>
+      <p className="mt-1 text-xs text-gray-500">
+        {description}
+      </p>
+    </button>
+  );
 }
 
 export default function DashboardScreen({
+  onOpenToday,
+  onOpenWeek,
+  onOpenMonth,
+  onOpenRegister,
+  onOpenCasts,
   onOpenRooms,
+  onOpenRoomTimeline,
 }: DashboardScreenProps) {
-  const [todayShifts, setTodayShifts] = useState<Shift[]>([]);
-  const [tomorrowShifts, setTomorrowShifts] = useState<Shift[]>([]);
-  const [castCount, setCastCount] = useState(0);
-  const [roomCount, setRoomCount] = useState(0);
+  const [summary, setSummary] =
+    useState<DashboardSummary | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState("");
 
-  const today = new Date();
-
-  const tomorrow = new Date(today);
-  tomorrow.setDate(today.getDate() + 1);
-
-  const todayText = formatLocalDate(today);
-  const tomorrowText = formatLocalDate(tomorrow);
-
-  useEffect(() => {
-    loadDashboard();
-  }, []);
-
-  async function loadDashboard() {
+  const loadDashboard = useCallback(async () => {
     try {
       setIsLoading(true);
-
-      const [casts, rooms, todayData, tomorrowData] =
-        await Promise.all([
-          getActiveCasts(),
-          getActiveRooms(),
-          getShiftsByDate(todayText),
-          getShiftsByDate(tomorrowText),
-        ]);
-
-      setCastCount(casts.length);
-      setRoomCount(rooms.length);
-      setTodayShifts(todayData);
-      setTomorrowShifts(tomorrowData);
+      setErrorMessage("");
+      setSummary(await getDashboardSummary());
     } catch (error) {
-      console.error(error);
-      alert("ダッシュボードの取得に失敗しました");
+      console.error("ダッシュボード取得エラー:", error);
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : "ダッシュボードの取得に失敗しました"
+      );
     } finally {
       setIsLoading(false);
     }
-  }
+  }, []);
 
-  const workingCount = todayShifts.filter((shift) => {
-    const result = getShiftStatus(
-      shift.work_date,
-      shift.start_time,
-      shift.end_time
-    );
-
-    return result.status === "working";
-  }).length;
-
-  const usedRoomCount = new Set(
-    todayShifts
-      .map((shift) => shift.room_id)
-      .filter((roomId): roomId is string => Boolean(roomId))
-  ).size;
-
-  const vacantRoomCount = Math.max(
-    roomCount - usedRoomCount,
-    0
-  );
+  useEffect(() => {
+    void loadDashboard();
+  }, [loadDashboard]);
 
   if (isLoading) {
     return (
       <div className="flex min-h-[60vh] items-center justify-center">
-        <p className="text-sm text-gray-500">
-          読み込み中...
-        </p>
+        <div className="text-center">
+          <div className="mx-auto h-8 w-8 animate-spin rounded-full border-4 border-gray-200 border-t-gray-900" />
+          <p className="mt-3 text-sm text-gray-500">
+            ダッシュボードを読み込んでいます...
+          </p>
+        </div>
       </div>
     );
   }
 
+  if (!summary || errorMessage) {
+    return (
+      <section className="rounded-2xl border border-red-100 bg-red-50 p-5">
+        <p className="font-bold text-red-700">
+          データを取得できませんでした
+        </p>
+        <p className="mt-2 text-sm text-red-600">
+          {errorMessage ||
+            "ダッシュボードの取得に失敗しました"}
+        </p>
+        <button
+          type="button"
+          onClick={() => void loadDashboard()}
+          className="mt-4 rounded-xl bg-red-600 px-4 py-2 text-sm font-bold text-white"
+        >
+          再読み込み
+        </button>
+      </section>
+    );
+  }
+
+  const totalTodayCount =
+    summary.workingCount +
+    summary.tentativeCount +
+    summary.holidayCount;
+
   return (
     <>
-      <header className="mb-6">
-        <p className="text-sm text-gray-500">
-          店舗ダッシュボード
-        </p>
-
-        <h1 className="text-3xl font-bold">
-          ホーム
-        </h1>
-
-        <p className="mt-1 text-sm text-gray-500">
-          {todayText}
-        </p>
+      <header className="mb-5 flex items-start justify-between gap-3">
+        <div>
+          <p className="text-sm text-gray-500">店舗管理</p>
+          <h1 className="text-2xl font-bold text-gray-900">
+            ダッシュボード
+          </h1>
+          <p className="mt-1 text-sm text-gray-500">
+            {formatDateText(summary.date)}
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => void loadDashboard()}
+          className="rounded-xl border border-gray-200 bg-white px-3 py-2 text-sm font-bold text-gray-600 shadow-sm"
+        >
+          更新
+        </button>
       </header>
 
-      <section className="mb-6 grid grid-cols-2 gap-3">
-        <div className="rounded-2xl bg-gray-100 p-4">
-          <p className="text-xs text-gray-500">
-            在籍キャスト
+      <button
+        type="button"
+        onClick={onOpenRegister}
+        className="mb-5 flex w-full items-center justify-between rounded-2xl bg-gray-900 p-5 text-left text-white shadow-sm"
+      >
+        <div>
+          <p className="text-sm text-gray-300">
+            新しい予定を追加
           </p>
-
-          <p className="mt-1 text-2xl font-bold">
-            {castCount}名
-          </p>
-        </div>
-
-        <div className="rounded-2xl bg-blue-50 p-4">
-          <p className="text-xs text-blue-700">
-            本日の出勤
-          </p>
-
-          <p className="mt-1 text-2xl font-bold text-blue-700">
-            {todayShifts.length}名
+          <p className="mt-1 text-lg font-bold">
+            シフトを登録する
           </p>
         </div>
+        <span className="text-3xl">＋</span>
+      </button>
 
-        <div className="rounded-2xl bg-green-50 p-4">
-          <p className="text-xs text-green-700">
-            現在出勤中
-          </p>
-
-          <p className="mt-1 text-2xl font-bold text-green-700">
-            {workingCount}名
-          </p>
-        </div>
-
-        <div className="rounded-2xl bg-yellow-50 p-4">
-          <p className="text-xs text-yellow-700">
-            空き部屋
-          </p>
-
-          <p className="mt-1 text-2xl font-bold text-yellow-700">
-            {vacantRoomCount}室
-          </p>
-
-          <p className="mt-1 text-xs text-yellow-700">
-            使用予定 {usedRoomCount}/{roomCount}室
-          </p>
-        </div>
-      </section>
-
-      <section className="mb-6 rounded-2xl border bg-white p-4 shadow-sm">
-        <div className="flex items-center justify-between gap-3">
+      <section className="mb-5">
+        <div className="mb-3 flex items-center justify-between">
           <div>
-            <p className="text-sm text-gray-500">
-              明日の予定
-            </p>
+            <p className="text-sm text-gray-500">本日の状況</p>
+            <h2 className="text-lg font-bold">
+              シフト {totalTodayCount}件
+            </h2>
+          </div>
+          <button
+            type="button"
+            onClick={onOpenToday}
+            className="text-sm font-bold text-gray-600"
+          >
+            詳細を見る
+          </button>
+        </div>
 
-            <p className="mt-1 text-xl font-bold">
-              出勤 {tomorrowShifts.length}名
+        <div className="grid grid-cols-3 gap-2">
+          <div className="rounded-2xl bg-blue-50 p-4">
+            <p className="text-xs font-bold text-blue-700">
+              通常出勤
+            </p>
+            <p className="mt-2 text-2xl font-bold text-blue-800">
+              {summary.workingCount}
+              <span className="ml-1 text-sm">名</span>
             </p>
           </div>
-
-          <p className="text-sm font-medium text-gray-500">
-            {tomorrowText}
-          </p>
+          <div className="rounded-2xl bg-yellow-50 p-4">
+            <p className="text-xs font-bold text-yellow-700">
+              仮シフト
+            </p>
+            <p className="mt-2 text-2xl font-bold text-yellow-800">
+              {summary.tentativeCount}
+              <span className="ml-1 text-sm">名</span>
+            </p>
+          </div>
+          <div className="rounded-2xl bg-gray-100 p-4">
+            <p className="text-xs font-bold text-gray-600">
+              休み
+            </p>
+            <p className="mt-2 text-2xl font-bold text-gray-700">
+              {summary.holidayCount}
+              <span className="ml-1 text-sm">名</span>
+            </p>
+          </div>
         </div>
       </section>
 
-      <section className="mb-6">
+      <section className="mb-5 grid grid-cols-2 gap-3">
+        <div className="rounded-2xl bg-green-50 p-4">
+          <p className="text-sm font-bold text-green-700">
+            現在出勤中
+          </p>
+          <p className="mt-3 text-3xl font-bold text-green-800">
+            {summary.workingNowCount}
+            <span className="ml-1 text-base">名</span>
+          </p>
+        </div>
         <button
           type="button"
           onClick={onOpenRooms}
-          className="flex w-full items-center justify-between rounded-2xl border bg-white p-4 text-left shadow-sm"
+          className="rounded-2xl bg-purple-50 p-4 text-left"
         >
-          <div>
-            <p className="text-sm text-gray-500">
-              店舗設備
-            </p>
-
-            <p className="mt-1 text-lg font-bold">
-              部屋管理
-            </p>
-
-            <p className="mt-1 text-xs text-gray-500">
-              部屋の追加・検索・非表示
-            </p>
-          </div>
-
-          <span className="text-2xl">
-            ›
-          </span>
+          <p className="text-sm font-bold text-purple-700">
+            空き部屋
+          </p>
+          <p className="mt-3 text-3xl font-bold text-purple-800">
+            {summary.availableRoomCount}
+            <span className="ml-1 text-base">室</span>
+          </p>
+          <p className="mt-1 text-xs text-purple-700">
+            使用中 {summary.usedRoomCount} /{" "}
+            {summary.totalRoomCount}室
+          </p>
         </button>
       </section>
 
-      <section>
-        <div className="mb-3 flex items-center justify-between">
-          <h2 className="text-lg font-bold">
-            本日のシフト
-          </h2>
+      <section className="mb-5">
+        <p className="text-sm text-gray-500">管理メニュー</p>
+        <h2 className="mb-3 text-lg font-bold">
+          クイックアクセス
+        </h2>
+        <div className="grid grid-cols-2 gap-3">
+          <MenuCard
+            icon="📅"
+            title="本日のシフト"
+            description={`${totalTodayCount}件登録`}
+            onClick={onOpenToday}
+          />
+          <MenuCard
+            icon="🗓️"
+            title="週間シフト"
+            description={`今週 ${summary.weekShiftCount}件`}
+            onClick={onOpenWeek}
+          />
+          <MenuCard
+            icon="📆"
+            title="月間カレンダー"
+            description="月全体を確認"
+            onClick={onOpenMonth}
+          />
+          <MenuCard
+            icon="👤"
+            title="キャスト管理"
+            description={`有効 ${summary.activeCastCount}名`}
+            onClick={onOpenCasts}
+          />
+          <MenuCard
+            icon="🏠"
+            title="部屋管理"
+            description={`有効 ${summary.totalRoomCount}室`}
+            onClick={onOpenRooms}
+          />
+          <MenuCard
+            icon="📊"
+            title="部屋タイムライン"
+            description="部屋ごとの稼働状況"
+            onClick={onOpenRoomTimeline}
+          />
+        </div>
+      </section>
 
-          <span className="text-sm text-gray-500">
-            {todayShifts.length}名
-          </span>
+      <section className="mb-5">
+        <div className="mb-3 flex items-center justify-between">
+          <div>
+            <p className="text-sm text-gray-500">最近の登録</p>
+            <h2 className="text-lg font-bold">最新シフト</h2>
+          </div>
+          <button
+            type="button"
+            onClick={onOpenWeek}
+            className="text-sm font-bold text-gray-600"
+          >
+            週間を見る
+          </button>
         </div>
 
         <div className="space-y-2">
-          {todayShifts.slice(0, 5).map((shift) => {
-            const status = getShiftStatus(
-              shift.work_date,
-              shift.start_time,
-              shift.end_time
-            );
-
-            return (
-              <div
-                key={shift.id}
-                className="rounded-xl border bg-white p-3"
-              >
-                <div className="flex items-center justify-between gap-3">
-                  <div>
-                    <p className="font-bold">
-                      {shift.casts?.display_name ||
-                        shift.casts?.name ||
-                        "未設定"}
-                    </p>
-
-                    <p className="mt-1 text-sm text-gray-500">
-                      {shift.start_time.slice(0, 5)}〜
-                      {shift.end_time.slice(0, 5)}
-                    </p>
-                  </div>
-
-                  <div className="text-right">
-                    <p className="text-xs font-medium text-gray-500">
-                      {shift.rooms?.name || "部屋未設定"}
-                    </p>
-
-                    <p
-                      className={`mt-1 text-xs font-bold ${
-                        status.status === "working"
-                          ? "text-green-600"
-                          : status.status === "soon"
-                            ? "text-yellow-600"
-                            : "text-gray-500"
-                      }`}
-                    >
-                      {status.label}
-                    </p>
-                  </div>
+          {summary.latestShifts.map((shift) => (
+            <div
+              key={shift.id}
+              className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm"
+            >
+              <div className="flex justify-between gap-3">
+                <div>
+                  <p className="font-bold">
+                    {shift.casts?.display_name ||
+                      shift.casts?.name ||
+                      "未設定"}
+                  </p>
+                  <p className="mt-1 text-sm text-gray-600">
+                    {shift.work_date}{" "}
+                    {formatTime(shift.start_time)}〜
+                    {formatTime(shift.end_time)}
+                  </p>
+                  {shift.rooms?.name &&
+                    shift.status !== "holiday" && (
+                      <p className="mt-1 text-xs text-gray-500">
+                        部屋：{shift.rooms.name}
+                      </p>
+                    )}
                 </div>
+                <span className="shrink-0 text-xs font-bold text-gray-500">
+                  {shift.status === "tentative"
+                    ? "仮シフト"
+                    : shift.status === "holiday"
+                      ? "休み"
+                      : "通常出勤"}
+                </span>
               </div>
-            );
-          })}
+            </div>
+          ))}
 
-          {todayShifts.length === 0 && (
-            <p className="rounded-xl bg-gray-50 p-4 text-sm text-gray-500">
-              本日のシフトはまだ登録されていません。
-            </p>
-          )}
-
-          {todayShifts.length > 5 && (
-            <p className="text-center text-sm text-gray-500">
-              ほか {todayShifts.length - 5}名
+          {summary.latestShifts.length === 0 && (
+            <p className="rounded-2xl bg-gray-50 p-5 text-center text-sm text-gray-500">
+              登録されたシフトはありません
             </p>
           )}
         </div>
       </section>
+
+      <div className="space-y-5">
+        <CastWorkloadPanel />
+        <DailyShiftSharePanel />
+        <ShiftIssuePanel onOpenWeek={onOpenWeek} />
+        <StaffingAlertPanel />
+        <RoomUtilizationPanel />
+        <ShiftCsvExportPanel />
+      </div>
     </>
   );
 }

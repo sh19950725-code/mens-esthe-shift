@@ -14,34 +14,35 @@ type CastDetailModalProps = {
   onEdit: () => void;
 };
 
+function formatLocalDate(date: Date): string {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+
+  return `${year}-${month}-${day}`;
+}
+
 function getCurrentMonthRange() {
   const now = new Date();
-  const year = now.getFullYear();
-  const month = now.getMonth();
-
-  const start = new Date(year, month, 1);
-  const end = new Date(year, month + 1, 0);
-
-  function formatDate(date: Date) {
-    const yyyy = date.getFullYear();
-    const mm = String(date.getMonth() + 1).padStart(2, "0");
-    const dd = String(date.getDate()).padStart(2, "0");
-
-    return `${yyyy}-${mm}-${dd}`;
-  }
 
   return {
-    startDate: formatDate(start),
-    endDate: formatDate(end),
+    startDate: formatLocalDate(
+      new Date(now.getFullYear(), now.getMonth(), 1)
+    ),
+    endDate: formatLocalDate(
+      new Date(now.getFullYear(), now.getMonth() + 1, 0)
+    ),
   };
 }
 
-function calculateMinutes(startTime: string, endTime: string) {
+function calculateMinutes(
+  startTime: string,
+  endTime: string
+): number {
   const [startHour, startMinute] = startTime
     .slice(0, 5)
     .split(":")
     .map(Number);
-
   const [endHour, endMinute] = endTime
     .slice(0, 5)
     .split(":")
@@ -57,7 +58,7 @@ function calculateMinutes(startTime: string, endTime: string) {
   return end - start;
 }
 
-function formatMinutes(totalMinutes: number) {
+function formatMinutes(totalMinutes: number): string {
   const hours = Math.floor(totalMinutes / 60);
   const minutes = totalMinutes % 60;
 
@@ -68,6 +69,30 @@ function formatMinutes(totalMinutes: number) {
   return `${hours}時間${minutes}分`;
 }
 
+function getStatusLabel(shift: Shift): string {
+  switch (shift.status) {
+    case "tentative":
+      return "仮シフト";
+    case "holiday":
+      return "休み";
+    case "working":
+    default:
+      return "通常出勤";
+  }
+}
+
+function getStatusClasses(shift: Shift): string {
+  switch (shift.status) {
+    case "tentative":
+      return "bg-yellow-100 text-yellow-700";
+    case "holiday":
+      return "bg-gray-100 text-gray-600";
+    case "working":
+    default:
+      return "bg-blue-100 text-blue-700";
+  }
+}
+
 export default function CastDetailModal({
   cast,
   onClose,
@@ -75,24 +100,42 @@ export default function CastDetailModal({
 }: CastDetailModalProps) {
   const [shifts, setShifts] = useState<Shift[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [errorMessage, setErrorMessage] = useState("");
 
   useEffect(() => {
-    loadShifts();
-  }, [cast.id]);
+    let isCancelled = false;
 
-  async function loadShifts() {
-    try {
-      setIsLoading(true);
+    async function loadShifts() {
+      try {
+        setIsLoading(true);
+        setErrorMessage("");
 
-      const data = await getShiftsByCastId(cast.id);
-      setShifts(data);
-    } catch (error) {
-      console.error(error);
-      alert("キャストのシフト履歴取得に失敗しました");
-    } finally {
-      setIsLoading(false);
+        const data = await getShiftsByCastId(cast.id);
+
+        if (!isCancelled) {
+          setShifts(data);
+        }
+      } catch (error) {
+        console.error("キャストのシフト履歴取得エラー:", error);
+
+        if (!isCancelled) {
+          setErrorMessage(
+            "キャストのシフト履歴取得に失敗しました"
+          );
+        }
+      } finally {
+        if (!isCancelled) {
+          setIsLoading(false);
+        }
+      }
     }
-  }
+
+    void loadShifts();
+
+    return () => {
+      isCancelled = true;
+    };
+  }, [cast.id]);
 
   const currentMonthShifts = useMemo(() => {
     const { startDate, endDate } = getCurrentMonthRange();
@@ -104,21 +147,37 @@ export default function CastDetailModal({
     );
   }, [shifts]);
 
-  const currentMonthMinutes = useMemo(() => {
-    return currentMonthShifts.reduce((total, shift) => {
-      return (
-        total +
-        calculateMinutes(
-          shift.start_time,
-          shift.end_time
-        )
-      );
-    }, 0);
-  }, [currentMonthShifts]);
+  const currentMonthWorkingShifts = useMemo(
+    () =>
+      currentMonthShifts.filter(
+        (shift) => shift.status !== "holiday"
+      ),
+    [currentMonthShifts]
+  );
+
+  const currentMonthMinutes = useMemo(
+    () =>
+      currentMonthWorkingShifts.reduce(
+        (total, shift) =>
+          total +
+          calculateMinutes(
+            shift.start_time,
+            shift.end_time
+          ),
+        0
+      ),
+    [currentMonthWorkingShifts]
+  );
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-black/40 p-4">
-      <div className="mx-auto my-6 w-full max-w-md rounded-3xl bg-white p-5 shadow-xl">
+    <div
+      className="fixed inset-0 z-50 overflow-y-auto bg-black/40 p-4"
+      onClick={onClose}
+    >
+      <div
+        className="mx-auto my-6 w-full max-w-md rounded-3xl bg-white p-5 shadow-xl"
+        onClick={(event) => event.stopPropagation()}
+      >
         <header className="mb-5">
           <p className="text-sm text-gray-500">
             キャスト詳細
@@ -143,7 +202,7 @@ export default function CastDetailModal({
             </p>
 
             <p className="mt-1 text-2xl font-bold">
-              {currentMonthShifts.length}日
+              {currentMonthWorkingShifts.length}日
             </p>
           </div>
 
@@ -164,7 +223,7 @@ export default function CastDetailModal({
               メモ
             </p>
 
-            <p className="rounded-xl bg-gray-100 p-3 text-sm text-gray-600">
+            <p className="whitespace-pre-wrap rounded-xl bg-gray-100 p-3 text-sm text-gray-600">
               {cast.memo}
             </p>
           </section>
@@ -180,6 +239,12 @@ export default function CastDetailModal({
               全{shifts.length}件
             </span>
           </div>
+
+          {errorMessage && (
+            <p className="mb-3 rounded-xl bg-red-50 p-3 text-sm text-red-700">
+              {errorMessage}
+            </p>
+          )}
 
           {isLoading ? (
             <p className="rounded-xl bg-gray-50 p-4 text-sm text-gray-500">
@@ -198,19 +263,32 @@ export default function CastDetailModal({
                         {shift.work_date}
                       </p>
 
-                      <p className="mt-1 text-sm text-gray-600">
-                        {shift.start_time.slice(0, 5)}〜
-                        {shift.end_time.slice(0, 5)}
-                      </p>
+                      {shift.status !== "holiday" && (
+                        <p className="mt-1 text-sm text-gray-600">
+                          {shift.start_time.slice(0, 5)}〜
+                          {shift.end_time.slice(0, 5)}
+                        </p>
+                      )}
+
+                      {shift.status !== "holiday" &&
+                        shift.rooms?.name && (
+                          <p className="mt-1 text-xs text-gray-500">
+                            部屋：{shift.rooms.name}
+                          </p>
+                        )}
                     </div>
 
-                    <p className="text-xs text-gray-500">
-                      {shift.rooms?.name || "部屋未設定"}
-                    </p>
+                    <span
+                      className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-bold ${getStatusClasses(
+                        shift
+                      )}`}
+                    >
+                      {getStatusLabel(shift)}
+                    </span>
                   </div>
 
                   {shift.memo && (
-                    <p className="mt-2 rounded-lg bg-gray-100 p-2 text-xs text-gray-600">
+                    <p className="mt-2 whitespace-pre-wrap rounded-lg bg-gray-100 p-2 text-xs text-gray-600">
                       {shift.memo}
                     </p>
                   )}
@@ -227,10 +305,7 @@ export default function CastDetailModal({
         </section>
 
         <div className="flex gap-3">
-          <Button
-            onClick={onEdit}
-            className="flex-1"
-          >
+          <Button onClick={onEdit} className="flex-1">
             編集する
           </Button>
 
