@@ -92,6 +92,43 @@ export default function RegistrationRequestForm() {
         >
           <div>
             <label
+              htmlFor="request-name"
+              className="mb-1 block text-sm font-bold text-gray-700"
+            >
+              お名前
+            </label>
+            <input
+              id="request-name"
+              value={name}
+              onChange={(event) => setName(event.target.value)}
+              disabled={isSubmitting}
+              className="w-full rounded-xl border border-gray-300 bg-white p-3 text-gray-900 outline-none focus:border-gray-900"
+              placeholder="山田 太郎"
+              maxLength={100}
+            />
+          </div>
+
+          <div>
+            <label
+              htmlFor="request-email"
+              className="mb-1 block text-sm font-bold text-gray-700"
+            >
+              ログイン用メールアドレス
+            </label>
+            <input
+              id="request-email"
+              type="email"
+              value={email}
+              onChange={(event) => setEmail(event.target.value)}
+              disabled={isSubmitting}
+              className="w-full rounded-xl border border-gray-300 bg-white p-3 text-gray-900 outline-none focus:border-gray-900"
+              placeholder="staff@example.com"
+              maxLength={255}
+            />
+          </div>
+
+          <div>
+            <label
               htmlFor="request-password"
               className="mb-1 block text-sm font-bold text-gray-700"
             >
@@ -133,43 +170,6 @@ export default function RegistrationRequestForm() {
             <p className="mt-1 text-xs text-gray-600">
               パスワードは申請一覧には保存・表示されません。
             </p>
-          </div>
-
-          <div>
-            <label
-              htmlFor="request-name"
-              className="mb-1 block text-sm font-bold text-gray-700"
-            >
-              お名前
-            </label>
-            <input
-              id="request-name"
-              value={name}
-              onChange={(event) => setName(event.target.value)}
-              disabled={isSubmitting}
-              className="w-full rounded-xl border border-gray-300 bg-white p-3 text-gray-900 outline-none focus:border-gray-900"
-              placeholder="山田 太郎"
-              maxLength={100}
-            />
-          </div>
-
-          <div>
-            <label
-              htmlFor="request-email"
-              className="mb-1 block text-sm font-bold text-gray-700"
-            >
-              メールアドレス
-            </label>
-            <input
-              id="request-email"
-              type="email"
-              value={email}
-              onChange={(event) => setEmail(event.target.value)}
-              disabled={isSubmitting}
-              className="w-full rounded-xl border border-gray-300 bg-white p-3 text-gray-900 outline-none focus:border-gray-900"
-              placeholder="staff@example.com"
-              maxLength={255}
-            />
           </div>
 
           <div>
