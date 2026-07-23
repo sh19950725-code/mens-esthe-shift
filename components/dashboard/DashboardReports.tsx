@@ -6,14 +6,12 @@ import DailyShiftSharePanel from "@/components/dashboard/DailyShiftSharePanel";
 import InstallAppPanel from "@/components/dashboard/InstallAppPanel";
 import ShiftCsvExportPanel from "@/components/dashboard/ShiftCsvExportPanel";
 import ShiftIssuePanel from "@/components/dashboard/ShiftIssuePanel";
-import StaffingAlertPanel from "@/components/dashboard/StaffingAlertPanel";
 import SystemHealthPanel from "@/components/dashboard/SystemHealthPanel";
 
 type ReportKey =
   | "issues"
   | "install"
   | "health"
-  | "staffing"
   | "share"
   | "casts"
   | "csv";
@@ -45,12 +43,6 @@ const REPORTS: {
     icon: "🩺",
     title: "システム診断",
     description: "接続やデータ取得を確認",
-  },
-  {
-    key: "staffing",
-    icon: "👥",
-    title: "人員不足アラート",
-    description: "時間帯ごとの出勤人数",
   },
   {
     key: "share",
@@ -86,8 +78,6 @@ export default function DashboardReports({
         return <InstallAppPanel />;
       case "health":
         return <SystemHealthPanel />;
-      case "staffing":
-        return <StaffingAlertPanel />;
       case "share":
         return <DailyShiftSharePanel />;
       case "casts":

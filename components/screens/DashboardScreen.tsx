@@ -5,7 +5,6 @@ import CastWorkloadPanel from "@/components/dashboard/CastWorkloadPanel";
 import DailyShiftSharePanel from "@/components/dashboard/DailyShiftSharePanel";
 import ShiftCsvExportPanel from "@/components/dashboard/ShiftCsvExportPanel";
 import ShiftIssuePanel from "@/components/dashboard/ShiftIssuePanel";
-import StaffingAlertPanel from "@/components/dashboard/StaffingAlertPanel";
 import {
   getDashboardSummary,
   type DashboardSummary,
@@ -334,7 +333,6 @@ export default function DashboardScreen({
         <CastWorkloadPanel />
         <DailyShiftSharePanel />
         <ShiftIssuePanel onOpenWeek={onOpenWeek} />
-        <StaffingAlertPanel />
         <ShiftCsvExportPanel />
       </div>
     </>
