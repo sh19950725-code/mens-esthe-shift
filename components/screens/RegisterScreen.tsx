@@ -2,7 +2,6 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import ShiftTimeTemplates from "@/components/register/ShiftTimeTemplates";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import Select from "@/components/ui/Select";
@@ -23,15 +22,7 @@ const KEEP_SELECTION_KEY =
   "register-keep-cast-room-selection-v1";
 const DRAFT_KEY = "shift-register-draft-v1";
 
-const WEEKDAYS = [
-  { value: 1, label: "月" },
-  { value: 2, label: "火" },
-  { value: 3, label: "水" },
-  { value: 4, label: "木" },
-  { value: 5, label: "金" },
-  { value: 6, label: "土" },
-  { value: 0, label: "日" },
-];
+const ALL_WEEKDAYS = [0, 1, 2, 3, 4, 5, 6];
 
 function formatLocalDate(date: Date): string {
   const year = date.getFullYear();
@@ -44,9 +35,10 @@ function getTodayDate(): string {
   return formatLocalDate(new Date());
 }
 
-function getOneMonthLaterDate(): string {
-  const date = new Date();
-  date.setMonth(date.getMonth() + 1);
+function getOneWeekLaterDate(dateText: string): string {
+  const [year, month, day] = dateText.split("-").map(Number);
+  const date = new Date(year, month - 1, day);
+  date.setDate(date.getDate() + 7);
   return formatLocalDate(date);
 }
 
@@ -58,16 +50,13 @@ export default function RegisterScreen() {
   const [workDate, setWorkDate] = useState(getTodayDate());
   const [startDate, setStartDate] = useState(getTodayDate());
   const [endDate, setEndDate] = useState(
-    getOneMonthLaterDate()
+    () => getOneWeekLaterDate(getTodayDate())
   );
   const [startTime, setStartTime] = useState("12:00");
   const [endTime, setEndTime] = useState("20:00");
   const [status, setStatus] =
     useState<ShiftStatus>("working");
   const [memo, setMemo] = useState("");
-  const [selectedWeekdays, setSelectedWeekdays] = useState<
-    number[]
-  >([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [keepSelection, setKeepSelection] = useState(false);
@@ -97,7 +86,6 @@ export default function RegisterScreen() {
           endTime?: string;
           status?: ShiftStatus;
           memo?: string;
-          selectedWeekdays?: number[];
         };
 
         if (draft.mode === "single" || draft.mode === "bulk") {
@@ -134,16 +122,6 @@ export default function RegisterScreen() {
         if (typeof draft.memo === "string") {
           setMemo(draft.memo);
         }
-        if (Array.isArray(draft.selectedWeekdays)) {
-          setSelectedWeekdays(
-            draft.selectedWeekdays.filter(
-              (value) =>
-                Number.isInteger(value) &&
-                value >= 0 &&
-                value <= 6
-            )
-          );
-        }
         setDraftRestored(true);
       }
     } catch (error) {
@@ -177,14 +155,6 @@ export default function RegisterScreen() {
     }
   }
 
-  function toggleWeekday(weekday: number) {
-    setSelectedWeekdays((current) =>
-      current.includes(weekday)
-        ? current.filter((value) => value !== weekday)
-        : [...current, weekday]
-    );
-  }
-
   function resetCommonFields() {
     if (!keepSelection) {
       setCastId("");
@@ -203,9 +173,9 @@ export default function RegisterScreen() {
 
   function resetBulkForm() {
     resetCommonFields();
-    setStartDate(getTodayDate());
-    setEndDate(getOneMonthLaterDate());
-    setSelectedWeekdays([]);
+    const today = getTodayDate();
+    setStartDate(today);
+    setEndDate(getOneWeekLaterDate(today));
   }
 
   function validateCommonFields(): boolean {
@@ -280,11 +250,6 @@ export default function RegisterScreen() {
       alert("終了日は開始日以降に設定してください");
       return;
     }
-    if (selectedWeekdays.length === 0) {
-      alert("登録する曜日を選択してください");
-      return;
-    }
-
     try {
       setIsSubmitting(true);
       const result = await createShiftsBulk({
@@ -297,7 +262,7 @@ export default function RegisterScreen() {
         end_time: endTime,
         status,
         memo: memo.trim() || null,
-        weekdays: selectedWeekdays,
+        weekdays: ALL_WEEKDAYS,
       });
 
       if (
@@ -342,14 +307,6 @@ export default function RegisterScreen() {
     }
   }
 
-  const selectedWeekdayLabels = useMemo(
-    () =>
-      WEEKDAYS.filter((weekday) =>
-        selectedWeekdays.includes(weekday.value)
-      ).map((weekday) => weekday.label),
-    [selectedWeekdays]
-  );
-
   const hasUnsavedChanges = useMemo(() => {
     return (
       (!keepSelection &&
@@ -357,8 +314,7 @@ export default function RegisterScreen() {
       status !== "working" ||
       startTime !== "12:00" ||
       endTime !== "20:00" ||
-      Boolean(memo.trim()) ||
-      selectedWeekdays.length > 0
+      Boolean(memo.trim())
     );
   }, [
     castId,
@@ -367,7 +323,6 @@ export default function RegisterScreen() {
     startTime,
     endTime,
     memo,
-    selectedWeekdays,
     keepSelection,
   ]);
 
@@ -411,7 +366,6 @@ export default function RegisterScreen() {
           endTime,
           status,
           memo,
-          selectedWeekdays,
         })
       );
     }, 400);
@@ -430,7 +384,6 @@ export default function RegisterScreen() {
     endTime,
     status,
     memo,
-    selectedWeekdays,
   ]);
 
   useEffect(() => {
@@ -542,9 +495,15 @@ export default function RegisterScreen() {
               <Field label="開始日">
                 <Input
                   value={startDate}
-                  onChange={(event) =>
-                    setStartDate(event.target.value)
-                  }
+                  onChange={(event) => {
+                    const nextStartDate = event.target.value;
+                    setStartDate(nextStartDate);
+                    if (nextStartDate) {
+                      setEndDate(
+                        getOneWeekLaterDate(nextStartDate)
+                      );
+                    }
+                  }}
                   type="date"
                 />
               </Field>
@@ -557,62 +516,6 @@ export default function RegisterScreen() {
                   type="date"
                 />
               </Field>
-            </div>
-
-            <div>
-              <label className="mb-2 block text-sm font-bold text-gray-700">
-                登録する曜日
-              </label>
-              <div className="grid grid-cols-7 gap-1">
-                {WEEKDAYS.map((weekday) => {
-                  const selected = selectedWeekdays.includes(
-                    weekday.value
-                  );
-                  return (
-                    <button
-                      key={weekday.value}
-                      type="button"
-                      onClick={() =>
-                        toggleWeekday(weekday.value)
-                      }
-                      className={`aspect-square rounded-xl text-sm font-bold ${
-                        selected
-                          ? "bg-black text-white"
-                          : "border border-gray-200 bg-white text-gray-600"
-                      }`}
-                    >
-                      {weekday.label}
-                    </button>
-                  );
-                })}
-              </div>
-              <div className="mt-2 flex gap-2">
-                <SmallButton
-                  onClick={() =>
-                    setSelectedWeekdays([1, 2, 3, 4, 5])
-                  }
-                >
-                  平日
-                </SmallButton>
-                <SmallButton
-                  onClick={() =>
-                    setSelectedWeekdays([0, 1, 2, 3, 4, 5, 6])
-                  }
-                >
-                  全曜日
-                </SmallButton>
-                <SmallButton
-                  onClick={() => setSelectedWeekdays([])}
-                >
-                  解除
-                </SmallButton>
-              </div>
-              <p className="mt-2 text-xs text-gray-500">
-                選択中：
-                {selectedWeekdayLabels.length
-                  ? selectedWeekdayLabels.join("・")
-                  : "なし"}
-              </p>
             </div>
           </>
         )}
@@ -648,21 +551,6 @@ export default function RegisterScreen() {
             <option value="holiday">休み</option>
           </Select>
         </Field>
-
-
-
-        {status !== "holiday" && (
-          <ShiftTimeTemplates
-            startTime={startTime}
-            endTime={endTime}
-            onApply={(start, end) => {
-              setStartTime(start);
-              setEndTime(end);
-            }}
-            disabled={isSubmitting}
-          />
-        )}
-
         <div className="grid grid-cols-2 gap-3">
           <Field label="出勤時間">
             <Input
@@ -777,20 +665,3 @@ function Field({
   );
 }
 
-function SmallButton({
-  onClick,
-  children,
-}: {
-  onClick: () => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className="rounded-lg bg-gray-100 px-3 py-2 text-xs font-bold text-gray-600"
-    >
-      {children}
-    </button>
-  );
-}
