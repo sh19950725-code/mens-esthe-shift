@@ -1,6 +1,12 @@
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 
+export type CastSortOrder =
+  | "registered"
+  | "name"
+  | "enrolled-first"
+  | "scout-first";
+
 type CastFiltersProps = {
   name: string;
   searchText: string;
@@ -8,6 +14,10 @@ type CastFiltersProps = {
   onNameChange: (value: string) => void;
   onSearchTextChange: (value: string) => void;
   onAdd: () => void;
+  sortOrder: CastSortOrder;
+  onSortOrderChange: (
+    value: CastSortOrder
+  ) => void;
   canEdit?: boolean;
 };
 
@@ -18,6 +28,8 @@ export default function CastFilters({
   onNameChange,
   onSearchTextChange,
   onAdd,
+  sortOrder,
+  onSortOrderChange,
   canEdit = false,
 }: CastFiltersProps) {
   return (
@@ -53,13 +65,43 @@ export default function CastFilters({
       </div>
       )}
 
-      <Input
-        value={searchText}
-        onChange={(event) =>
-          onSearchTextChange(event.target.value)
-        }
-        placeholder="キャスト名で検索"
-      />
+      <div className="grid grid-cols-1 gap-2 sm:grid-cols-[1fr_auto]">
+        <Input
+          value={searchText}
+          onChange={(event) =>
+            onSearchTextChange(event.target.value)
+          }
+          placeholder="キャスト名で検索"
+        />
+
+        <label className="flex items-center gap-2 rounded-xl border border-gray-300 bg-white px-3">
+          <span className="shrink-0 text-xs font-bold text-gray-700">
+            並び順
+          </span>
+          <select
+            value={sortOrder}
+            onChange={(event) =>
+              onSortOrderChange(
+                event.target.value as CastSortOrder
+              )
+            }
+            className="min-h-11 min-w-0 flex-1 bg-white text-sm font-bold text-gray-900 outline-none"
+          >
+            <option value="registered">
+              登録順
+            </option>
+            <option value="name">
+              名前順
+            </option>
+            <option value="enrolled-first">
+              在籍を先に表示
+            </option>
+            <option value="scout-first">
+              スカウトを先に表示
+            </option>
+          </select>
+        </label>
+      </div>
     </section>
   );
 }

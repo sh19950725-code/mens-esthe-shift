@@ -1,7 +1,9 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import CastFilters from "@/components/casts/CastFilters";
+import CastFilters, {
+  type CastSortOrder,
+} from "@/components/casts/CastFilters";
 import CastHeader from "@/components/casts/CastHeader";
 import CastList from "@/components/casts/CastList";
 import CastTabs, {
@@ -34,6 +36,8 @@ export default function CastScreen({
 
   const [name, setName] = useState("");
   const [searchText, setSearchText] = useState("");
+  const [sortOrder, setSortOrder] =
+    useState<CastSortOrder>("registered");
 
   const [currentView, setCurrentView] =
     useState<CastView>("active");
@@ -261,23 +265,60 @@ export default function CastScreen({
       .trim()
       .toLowerCase();
 
-    if (!keyword) {
-      return casts;
+    const matchedCasts = keyword
+      ? casts.filter((cast) => {
+          const nameText =
+            cast.name.toLowerCase();
+          const displayNameText = (
+            cast.display_name || ""
+          ).toLowerCase();
+          const scoutNameText = (
+            cast.scout_name || ""
+          ).toLowerCase();
+
+          return (
+            nameText.includes(keyword) ||
+            displayNameText.includes(keyword) ||
+            scoutNameText.includes(keyword)
+          );
+        })
+      : [...casts];
+
+    if (sortOrder === "registered") {
+      return matchedCasts;
     }
 
-    return casts.filter((cast) => {
-      const nameText = cast.name.toLowerCase();
+    return [...matchedCasts].sort((a, b) => {
+      if (sortOrder === "name") {
+        return (
+          a.display_name || a.name
+        ).localeCompare(
+          b.display_name || b.name,
+          "ja"
+        );
+      }
 
-      const displayNameText = (
-        cast.display_name || ""
-      ).toLowerCase();
+      const aIsScout =
+        a.cast_type === "scout" ? 1 : 0;
+      const bIsScout =
+        b.cast_type === "scout" ? 1 : 0;
+      const typeDifference =
+        sortOrder === "scout-first"
+          ? bIsScout - aIsScout
+          : aIsScout - bIsScout;
+
+      if (typeDifference !== 0) {
+        return typeDifference;
+      }
 
       return (
-        nameText.includes(keyword) ||
-        displayNameText.includes(keyword)
+        a.display_name || a.name
+      ).localeCompare(
+        b.display_name || b.name,
+        "ja"
       );
     });
-  }, [casts, searchText]);
+  }, [casts, searchText, sortOrder]);
 
   if (isLoading) {
     return (
@@ -304,6 +345,8 @@ export default function CastScreen({
         onNameChange={setName}
         onSearchTextChange={setSearchText}
         onAdd={addCast}
+        sortOrder={sortOrder}
+        onSortOrderChange={setSortOrder}
       />
 
       <CastTabs
