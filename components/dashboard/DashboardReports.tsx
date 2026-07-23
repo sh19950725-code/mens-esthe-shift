@@ -4,7 +4,6 @@ import { useState } from "react";
 import CastWorkloadPanel from "@/components/dashboard/CastWorkloadPanel";
 import DailyShiftSharePanel from "@/components/dashboard/DailyShiftSharePanel";
 import InstallAppPanel from "@/components/dashboard/InstallAppPanel";
-import ShiftCsvExportPanel from "@/components/dashboard/ShiftCsvExportPanel";
 import ShiftIssuePanel from "@/components/dashboard/ShiftIssuePanel";
 import SystemHealthPanel from "@/components/dashboard/SystemHealthPanel";
 
@@ -13,8 +12,7 @@ type ReportKey =
   | "install"
   | "health"
   | "share"
-  | "casts"
-  | "csv";
+  | "casts";
 
 type DashboardReportsProps = {
   onOpenWeek?: () => void;
@@ -56,12 +54,6 @@ const REPORTS: {
     title: "キャスト勤務集計",
     description: "勤務日数と勤務時間を集計",
   },
-  {
-    key: "csv",
-    icon: "📥",
-    title: "CSV出力",
-    description: "シフトをExcel形式で保存",
-  },
 ];
 
 export default function DashboardReports({
@@ -82,8 +74,6 @@ export default function DashboardReports({
         return <DailyShiftSharePanel />;
       case "casts":
         return <CastWorkloadPanel />;
-      case "csv":
-        return <ShiftCsvExportPanel />;
       default:
         return null;
     }

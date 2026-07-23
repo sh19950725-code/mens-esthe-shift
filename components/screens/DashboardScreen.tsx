@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useState } from "react";
 import CastWorkloadPanel from "@/components/dashboard/CastWorkloadPanel";
 import DailyShiftSharePanel from "@/components/dashboard/DailyShiftSharePanel";
-import ShiftCsvExportPanel from "@/components/dashboard/ShiftCsvExportPanel";
 import ShiftIssuePanel from "@/components/dashboard/ShiftIssuePanel";
 import {
   getDashboardSummary,
@@ -333,7 +332,6 @@ export default function DashboardScreen({
         <CastWorkloadPanel />
         <DailyShiftSharePanel />
         <ShiftIssuePanel onOpenWeek={onOpenWeek} />
-        <ShiftCsvExportPanel />
       </div>
     </>
   );
