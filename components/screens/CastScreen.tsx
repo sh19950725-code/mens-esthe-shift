@@ -20,7 +20,11 @@ import {
   type Cast,
 } from "@/services/cast.service";
 
-export default function CastScreen() {
+export default function CastScreen({
+  canEdit = false,
+}: {
+  canEdit?: boolean;
+}) {
   const [activeCasts, setActiveCasts] = useState<Cast[]>(
     []
   );
@@ -299,6 +303,7 @@ export default function CastScreen() {
       />
 
       <CastFilters
+        canEdit={canEdit}
         name={name}
         searchText={searchText}
         isAdding={isAdding}
@@ -318,6 +323,7 @@ export default function CastScreen() {
       />
 
       <CastList
+        canEdit={canEdit}
         casts={filteredCasts}
         totalCount={casts.length}
         isActive={currentView === "active"}
@@ -331,6 +337,7 @@ export default function CastScreen() {
 
       {selectedCast && (
         <CastDetailModal
+          canEdit={canEdit}
           cast={selectedCast}
           onClose={() => setSelectedCast(null)}
           onEdit={() => {
@@ -340,7 +347,7 @@ export default function CastScreen() {
         />
       )}
 
-      {editingCast && (
+      {canEdit && editingCast && (
         <EditCastModal
           cast={editingCast}
           onClose={() => setEditingCast(null)}

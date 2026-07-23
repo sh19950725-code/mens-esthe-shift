@@ -8,6 +8,7 @@ type CastFiltersProps = {
   onNameChange: (value: string) => void;
   onSearchTextChange: (value: string) => void;
   onAdd: () => void;
+  canEdit?: boolean;
 };
 
 export default function CastFilters({
@@ -17,9 +18,11 @@ export default function CastFilters({
   onNameChange,
   onSearchTextChange,
   onAdd,
+  canEdit = false,
 }: CastFiltersProps) {
   return (
     <section className="mb-5 space-y-3">
+      {canEdit && (
       <div className="flex items-stretch gap-2">
         <div className="min-w-0 flex-1">
           <Input
@@ -48,6 +51,7 @@ export default function CastFilters({
           {isAdding ? "追加中" : "追加"}
         </Button>
       </div>
+      )}
 
       <Input
         value={searchText}

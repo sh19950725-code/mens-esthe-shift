@@ -75,7 +75,11 @@ function getStatusClasses(status: ShiftStatus): string {
   return "border-blue-100 bg-blue-50";
 }
 
-export default function WeekScreen() {
+export default function WeekScreen({
+  canEdit = false,
+}: {
+  canEdit?: boolean;
+}) {
   const [weekStart, setWeekStart] = useState(() =>
     getMonday(new Date())
   );
@@ -354,24 +358,26 @@ export default function WeekScreen() {
                               {getStatusLabel(status)}
                             </span>
                           </div>
-                          <div className="mt-3 flex justify-end gap-2">
-                            <button
-                              type="button"
-                              onClick={() => setEditingShift(shift)}
-                              className="rounded-lg bg-white px-3 py-2 text-xs font-bold"
-                            >
-                              編集
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() =>
-                                void deleteShift(shift.id)
-                              }
-                              className="rounded-lg bg-red-50 px-3 py-2 text-xs font-bold text-red-600"
-                            >
-                              削除
-                            </button>
-                          </div>
+                          {canEdit && (
+                            <div className="mt-3 flex justify-end gap-2">
+                              <button
+                                type="button"
+                                onClick={() => setEditingShift(shift)}
+                                className="rounded-lg bg-white px-3 py-2 text-xs font-bold"
+                              >
+                                編集
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() =>
+                                  void deleteShift(shift.id)
+                                }
+                                className="rounded-lg bg-red-50 px-3 py-2 text-xs font-bold text-red-600"
+                              >
+                                削除
+                              </button>
+                            </div>
+                          )}
                         </div>
                       );
                     })}
@@ -389,7 +395,7 @@ export default function WeekScreen() {
         </section>
       )}
 
-      {editingShift && (
+      {canEdit && editingShift && (
         <EditShiftModal
           shift={editingShift}
           onClose={() => setEditingShift(null)}

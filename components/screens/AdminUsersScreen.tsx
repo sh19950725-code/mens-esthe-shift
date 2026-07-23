@@ -14,12 +14,15 @@ import {
   permanentlyDeleteLoginUser,
   setLoginUserDisabled,
   setLoginUserRole,
+  setLoginUserStores,
   type AdminUser,
+  type UserStoreSelection,
 } from "@/services/admin-user.service";
 import type {
   UserRole,
 } from "@/services/profile.service";
 import type {
+  Store,
   StoreRole,
 } from "@/services/store.service";
 
@@ -35,6 +38,86 @@ function formatDate(value: string | null): string {
   }).format(new Date(value));
 }
 
+function StoreMembershipSelector({
+  stores,
+  selection,
+  onChange,
+}: {
+  stores: Store[];
+  selection: Record<string, StoreRole>;
+  onChange: (
+    next: Record<string, StoreRole>
+  ) => void;
+}) {
+  function toggleStore(storeId: string) {
+    const next = { ...selection };
+
+    if (next[storeId]) {
+      delete next[storeId];
+    } else {
+      next[storeId] = "staff";
+    }
+
+    onChange(next);
+  }
+
+  return (
+    <fieldset className="rounded-xl border border-gray-200 p-3">
+      <legend className="px-1 text-sm font-bold text-gray-700">
+        所属店舗（複数選択可）
+      </legend>
+      <div className="space-y-2">
+        {stores.map((store) => {
+          const selectedRole = selection[store.id];
+
+          return (
+            <div
+              key={store.id}
+              className={`rounded-xl border p-3 ${
+                selectedRole
+                  ? "border-blue-200 bg-blue-50"
+                  : "border-gray-200 bg-white"
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <input
+                  type="checkbox"
+                  checked={Boolean(selectedRole)}
+                  onChange={() => toggleStore(store.id)}
+                  className="h-5 w-5 rounded"
+                />
+                <span className="min-w-0 flex-1 truncate text-sm font-bold">
+                  {store.name}
+                </span>
+                {selectedRole && (
+                  <select
+                    value={selectedRole}
+                    onChange={(event) =>
+                      onChange({
+                        ...selection,
+                        [store.id]: event.target
+                          .value as StoreRole,
+                      })
+                    }
+                    className="rounded-lg border bg-white px-2 py-1 text-xs"
+                  >
+                    <option value="staff">
+                      一般
+                    </option>
+                    <option value="admin">
+                      店舗管理者
+                    </option>
+                  </select>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </fieldset>
+  );
+}
+
 export default function AdminUsersScreen({
   onBack,
 }: AdminUsersScreenProps) {
@@ -47,10 +130,14 @@ export default function AdminUsersScreen({
   const [password, setPassword] = useState("");
   const [role, setRole] =
     useState<UserRole>("staff");
-  const [storeId, setStoreId] =
-    useState(currentStoreId);
-  const [storeRole, setStoreRole] =
-    useState<StoreRole>("staff");
+  const [selectedStores, setSelectedStores] =
+    useState<Record<string, StoreRole>>({
+      [currentStoreId]: "staff",
+    });
+  const [editingStoresUserId, setEditingStoresUserId] =
+    useState("");
+  const [editingStores, setEditingStores] =
+    useState<Record<string, StoreRole>>({});
   const [isCreating, setIsCreating] =
     useState(false);
   const [workingUserId, setWorkingUserId] =
@@ -97,6 +184,17 @@ export default function AdminUsersScreen({
     );
   }, [searchText, users]);
 
+  function toStoreSelections(
+    selection: Record<string, StoreRole>
+  ): UserStoreSelection[] {
+    return Object.entries(selection).map(
+      ([storeId, storeRole]) => ({
+        storeId,
+        role: storeRole,
+      })
+    );
+  }
+
   async function handleCreateUser() {
     if (!email.trim()) {
       alert("メールアドレスを入力してください");
@@ -113,13 +211,14 @@ export default function AdminUsersScreen({
         email,
         password,
         role,
-        storeId,
-        storeRole,
+        stores: toStoreSelections(selectedStores),
       });
       setEmail("");
       setPassword("");
       setRole("staff");
-      setStoreRole("staff");
+      setSelectedStores({
+        [currentStoreId]: "staff",
+      });
       await loadUsers();
       alert("ログインアカウントを発行しました");
     } catch (error) {
@@ -131,6 +230,44 @@ export default function AdminUsersScreen({
       );
     } finally {
       setIsCreating(false);
+    }
+  }
+
+  function openStoreEditor(user: AdminUser) {
+    setEditingStoresUserId(user.id);
+    setEditingStores(
+      Object.fromEntries(
+        user.memberships.map((membership) => [
+          membership.store_id,
+          membership.role,
+        ])
+      )
+    );
+  }
+
+  async function saveUserStores(user: AdminUser) {
+    const selections =
+      toStoreSelections(editingStores);
+
+    if (selections.length === 0) {
+      alert("所属店舗を1つ以上選択してください");
+      return;
+    }
+
+    try {
+      setWorkingUserId(user.id);
+      await setLoginUserStores(user.id, selections);
+      setEditingStoresUserId("");
+      await loadUsers();
+      alert("所属店舗を更新しました");
+    } catch (error) {
+      alert(
+        error instanceof Error
+          ? error.message
+          : "所属店舗の更新に失敗しました"
+      );
+    } finally {
+      setWorkingUserId("");
     }
   }
 
@@ -282,7 +419,7 @@ export default function AdminUsersScreen({
             placeholder="初期パスワード（8文字以上）"
             className="w-full rounded-xl border p-3"
           />
-          <div className="grid grid-cols-2 gap-2">
+          <div>
             <select
               value={role}
               onChange={(event) =>
@@ -297,36 +434,12 @@ export default function AdminUsersScreen({
                 システム：管理者
               </option>
             </select>
-            <select
-              value={storeId}
-              onChange={(event) =>
-                setStoreId(event.target.value)
-              }
-              className="rounded-xl border p-3 text-sm"
-            >
-              {stores.map((store) => (
-                <option key={store.id} value={store.id}>
-                  {store.name}
-                </option>
-              ))}
-            </select>
           </div>
-          <select
-            value={storeRole}
-            onChange={(event) =>
-              setStoreRole(
-                event.target.value as StoreRole
-              )
-            }
-            className="w-full rounded-xl border p-3 text-sm"
-          >
-            <option value="staff">
-              店舗権限：一般スタッフ
-            </option>
-            <option value="admin">
-              店舗権限：店舗管理者
-            </option>
-          </select>
+          <StoreMembershipSelector
+            stores={stores}
+            selection={selectedStores}
+            onChange={setSelectedStores}
+          />
           <button
             type="button"
             onClick={() => void handleCreateUser()}
@@ -402,10 +515,23 @@ export default function AdminUsersScreen({
             const isSelf = user.id === currentUserId;
             const isWorking =
               workingUserId === user.id;
-            const membership = user.memberships.find(
-              (item) =>
-                item.store_id === currentStoreId
-            );
+            const membershipNames = user.memberships
+              .map((membership) => {
+                const store = stores.find(
+                  (item) =>
+                    item.id === membership.store_id
+                );
+                if (!store) return null;
+                return `${store.name}（${
+                  membership.role === "admin"
+                    ? "管理者"
+                    : "一般"
+                }）`;
+              })
+              .filter(
+                (value): value is string =>
+                  value !== null
+              );
 
             return (
               <article
@@ -426,11 +552,9 @@ export default function AdminUsersScreen({
                           )}`}
                     </p>
                     <p className="mt-1 text-xs text-gray-500">
-                      表示中の店舗：
-                      {membership
-                        ? membership.role === "admin"
-                          ? "店舗管理者"
-                          : "一般スタッフ"
+                      所属店舗：
+                      {membershipNames.length > 0
+                        ? membershipNames.join("、")
                         : "所属なし"}
                     </p>
                   </div>
@@ -456,6 +580,39 @@ export default function AdminUsersScreen({
 
                 {!isSelf && (
                   <div className="mt-3 grid grid-cols-2 gap-2 border-t pt-3">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        editingStoresUserId === user.id
+                          ? setEditingStoresUserId("")
+                          : openStoreEditor(user)
+                      }
+                      disabled={isWorking}
+                      className="col-span-2 rounded-xl bg-blue-50 px-2 py-2 text-xs font-bold text-blue-700 disabled:opacity-40"
+                    >
+                      {editingStoresUserId === user.id
+                        ? "店舗編集を閉じる"
+                        : "所属店舗を編集"}
+                    </button>
+                    {editingStoresUserId === user.id && (
+                      <div className="col-span-2 rounded-xl border border-blue-100 bg-blue-50/40 p-3">
+                        <StoreMembershipSelector
+                          stores={stores}
+                          selection={editingStores}
+                          onChange={setEditingStores}
+                        />
+                        <button
+                          type="button"
+                          onClick={() =>
+                            void saveUserStores(user)
+                          }
+                          disabled={isWorking}
+                          className="mt-3 w-full rounded-xl bg-blue-600 px-3 py-2 text-xs font-bold text-white disabled:opacity-40"
+                        >
+                          所属店舗を保存
+                        </button>
+                      </div>
+                    )}
                     <button
                       type="button"
                       onClick={() =>

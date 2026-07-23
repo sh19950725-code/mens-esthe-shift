@@ -60,7 +60,9 @@ export async function getMyStores(): Promise<Store[]> {
 
   if (error) throw error;
 
-  return ((data ?? []) as unknown as StoreMemberRow[])
+  const storeRows = (
+    (data ?? []) as unknown as StoreMemberRow[]
+  )
     .map((row) => {
       const store = firstRelation(row.stores);
       if (!store) return null;
@@ -72,10 +74,26 @@ export async function getMyStores(): Promise<Store[]> {
         role: row.role,
       };
     })
-    .filter((store): store is Store => store !== null)
-    .sort((first, second) =>
+    .filter((store): store is Store => store !== null);
+
+  const uniqueStores = new Map<string, Store>();
+
+  for (const store of storeRows) {
+    const existing = uniqueStores.get(store.id);
+
+    if (
+      !existing ||
+      (existing.role === "staff" &&
+        store.role === "admin")
+    ) {
+      uniqueStores.set(store.id, store);
+    }
+  }
+
+  return Array.from(uniqueStores.values()).sort(
+    (first, second) =>
       first.name.localeCompare(second.name, "ja")
-    );
+  );
 }
 
 export function getSavedStoreId(): string | null {

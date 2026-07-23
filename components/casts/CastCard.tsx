@@ -8,6 +8,7 @@ type CastCardProps = {
   onDeactivate: () => void;
   onActivate: () => void;
   onDelete: () => void;
+  canEdit?: boolean;
 };
 
 export default function CastCard({
@@ -18,6 +19,7 @@ export default function CastCard({
   onDeactivate,
   onActivate,
   onDelete,
+  canEdit = false,
 }: CastCardProps) {
   return (
     <div className="rounded-2xl border bg-white p-4 shadow-sm">
@@ -51,6 +53,7 @@ export default function CastCard({
           )}
         </div>
 
+        {canEdit && (
         <div className="flex shrink-0 flex-wrap justify-end gap-2">
           <button
             type="button"
@@ -88,6 +91,7 @@ export default function CastCard({
             </>
           )}
         </div>
+        )}
       </div>
     </div>
   );

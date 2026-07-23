@@ -12,6 +12,7 @@ import {
 } from "@/services/dashboard.service";
 
 type DashboardScreenProps = {
+  canEdit?: boolean;
   onOpenToday?: () => void;
   onOpenWeek?: () => void;
   onOpenMonth?: () => void;
@@ -60,6 +61,7 @@ function MenuCard({
 }
 
 export default function DashboardScreen({
+  canEdit = false,
   onOpenToday,
   onOpenWeek,
   onOpenMonth,
@@ -152,21 +154,32 @@ export default function DashboardScreen({
         </button>
       </header>
 
-      <button
-        type="button"
-        onClick={onOpenRegister}
-        className="mb-5 flex w-full items-center justify-between rounded-2xl bg-gray-900 p-5 text-left text-white shadow-sm"
-      >
-        <div>
-          <p className="text-sm text-gray-300">
-            新しい予定を追加
+      {canEdit ? (
+        <button
+          type="button"
+          onClick={onOpenRegister}
+          className="mb-5 flex w-full items-center justify-between rounded-2xl bg-gray-900 p-5 text-left text-white shadow-sm"
+        >
+          <div>
+            <p className="text-sm text-gray-300">
+              新しい予定を追加
+            </p>
+            <p className="mt-1 text-lg font-bold">
+              シフトを登録する
+            </p>
+          </div>
+          <span className="text-3xl">＋</span>
+        </button>
+      ) : (
+        <div className="mb-5 rounded-2xl border border-blue-100 bg-blue-50 p-4">
+          <p className="font-bold text-blue-800">
+            閲覧専用
           </p>
-          <p className="mt-1 text-lg font-bold">
-            シフトを登録する
+          <p className="mt-1 text-sm text-blue-700">
+            一般スタッフはシフトやキャストを確認できますが、登録・編集・削除はできません。
           </p>
         </div>
-        <span className="text-3xl">＋</span>
-      </button>
+      )}
 
       <section className="mb-5">
         <div className="mb-3 flex items-center justify-between">

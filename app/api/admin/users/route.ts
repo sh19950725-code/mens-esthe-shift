@@ -23,6 +23,11 @@ type MembershipRow = {
   role: StoreRole;
 };
 
+type StoreSelection = {
+  storeId: string;
+  role: StoreRole;
+};
+
 function getEnvironment() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL
     ?.trim()
@@ -54,17 +59,75 @@ async function authorize(request: Request) {
     throw new Error("UNAUTHORIZED");
   }
 
-  const authClient = createClient(url, anonKey, {
+  const tokenParts = token.split(".");
+
+  if (tokenParts.length !== 3) {
+    throw new Error("UNAUTHORIZED");
+  }
+
+  let userId = "";
+
+  try {
+    const base64 = tokenParts[1]
+      .replace(/-/g, "+")
+      .replace(/_/g, "/")
+      .padEnd(
+        Math.ceil(tokenParts[1].length / 4) * 4,
+        "="
+      );
+    const payload = JSON.parse(
+      Buffer.from(base64, "base64").toString("utf8")
+    ) as {
+      sub?: string;
+      exp?: number;
+    };
+
+    if (
+      !payload.sub ||
+      (payload.exp &&
+        payload.exp <= Math.floor(Date.now() / 1000))
+    ) {
+      throw new Error("INVALID_TOKEN");
+    }
+
+    userId = payload.sub;
+  } catch {
+    throw new Error("UNAUTHORIZED");
+  }
+
+  // AuthのgetUser()ではなく、通常のアプリと同じ
+  // PostgREST + RLS経路でトークンを検証します。
+  // ES256移行後の一部プロジェクトで発生する
+  // Auth Admin APIのkid検証不整合を回避できます。
+  const userClient = createClient(url, anonKey, {
     auth: {
       autoRefreshToken: false,
       persistSession: false,
     },
+    global: {
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+    },
   });
-  const { data, error } =
-    await authClient.auth.getUser(token);
+  const { data: profile, error: profileError } =
+    await userClient
+      .from("profiles")
+      .select("id, role")
+      .eq("id", userId)
+      .maybeSingle();
 
-  if (error || !data.user) {
-    throw new Error("UNAUTHORIZED");
+  const currentProfile = profile as {
+    id?: string;
+    role?: UserRole;
+  } | null;
+
+  if (
+    profileError ||
+    currentProfile?.id !== userId ||
+    currentProfile?.role !== "admin"
+  ) {
+    throw new Error("FORBIDDEN");
   }
 
   const adminClient = createClient(
@@ -77,27 +140,10 @@ async function authorize(request: Request) {
       },
     }
   );
-  const { data: profile, error: profileError } =
-    await adminClient
-      .from("profiles")
-      .select("role")
-      .eq("id", data.user.id)
-      .maybeSingle();
-
-  const currentProfile = profile as {
-    role?: UserRole;
-  } | null;
-
-  if (
-    profileError ||
-    currentProfile?.role !== "admin"
-  ) {
-    throw new Error("FORBIDDEN");
-  }
 
   return {
     adminClient,
-    currentUser: data.user,
+    currentUser: { id: userId },
   };
 }
 
@@ -165,6 +211,145 @@ async function ensureAnotherAdmin(
     throw new Error(
       "最後の管理者は変更・停止・削除できません"
     );
+  }
+}
+
+function normalizeStoreSelections(
+  value: unknown
+): StoreSelection[] {
+  if (!Array.isArray(value)) return [];
+
+  const selections = new Map<string, StoreRole>();
+
+  for (const item of value) {
+    if (
+      typeof item !== "object" ||
+      item === null ||
+      !("storeId" in item) ||
+      typeof item.storeId !== "string" ||
+      !item.storeId
+    ) {
+      continue;
+    }
+
+    const role: StoreRole =
+      "role" in item && item.role === "admin"
+        ? "admin"
+        : "staff";
+    selections.set(item.storeId, role);
+  }
+
+  return Array.from(selections, ([storeId, role]) => ({
+    storeId,
+    role,
+  }));
+}
+
+async function replaceMemberships(
+  adminClient: SupabaseClient,
+  userId: string,
+  selections: StoreSelection[]
+) {
+  if (selections.length === 0) {
+    throw new Error(
+      "所属店舗を1つ以上選択してください"
+    );
+  }
+
+  const storeIds = selections.map(
+    (selection) => selection.storeId
+  );
+  const { data: validStores, error: storeError } =
+    await adminClient
+      .from("stores")
+      .select("id")
+      .in("id", storeIds)
+      .eq("is_active", true);
+
+  if (storeError) throw storeError;
+
+  if ((validStores ?? []).length !== storeIds.length) {
+    throw new Error(
+      "選択された店舗の一部が見つかりません"
+    );
+  }
+
+  const { data: currentRows, error: currentError } =
+    await adminClient
+      .from("store_members")
+      .select("store_id, role")
+      .eq("user_id", userId);
+
+  if (currentError) throw currentError;
+
+  const nextRoleByStore = new Map(
+    selections.map((selection) => [
+      selection.storeId,
+      selection.role,
+    ])
+  );
+
+  for (const row of (currentRows ?? []) as {
+    store_id: string;
+    role: StoreRole;
+  }[]) {
+    const nextRole = nextRoleByStore.get(row.store_id);
+    const losesAdmin =
+      row.role === "admin" &&
+      nextRole !== "admin";
+
+    if (!losesAdmin) continue;
+
+    const { count, error } = await adminClient
+      .from("store_members")
+      .select("user_id", {
+        count: "exact",
+        head: true,
+      })
+      .eq("store_id", row.store_id)
+      .eq("role", "admin")
+      .neq("user_id", userId);
+
+    if (error) throw error;
+
+    if ((count ?? 0) === 0) {
+      throw new Error(
+        "店舗管理者を0人にすることはできません"
+      );
+    }
+  }
+
+  const { error: upsertError } = await adminClient
+    .from("store_members")
+    .upsert(
+      selections.map((selection) => ({
+        store_id: selection.storeId,
+        user_id: userId,
+        role: selection.role,
+        updated_at: new Date().toISOString(),
+      })),
+      { onConflict: "store_id,user_id" }
+    );
+
+  if (upsertError) throw upsertError;
+
+  const removedStoreIds = (
+    (currentRows ?? []) as {
+      store_id: string;
+      role: StoreRole;
+    }[]
+  )
+    .map((row) => row.store_id)
+    .filter((storeId) => !nextRoleByStore.has(storeId));
+
+  if (removedStoreIds.length > 0) {
+    const { error: deleteError } = await adminClient
+      .from("store_members")
+      .delete()
+      .eq("user_id", userId)
+      .in("store_id", removedStoreIds);
+
+    if (deleteError) throw deleteError;
   }
 }
 
@@ -243,15 +428,14 @@ export async function POST(request: Request) {
       email?: string;
       password?: string;
       role?: UserRole;
-      storeId?: string;
-      storeRole?: StoreRole;
+      stores?: StoreSelection[];
     };
     const email = body.email?.trim().toLowerCase() ?? "";
     const password = body.password ?? "";
     const role: UserRole =
       body.role === "admin" ? "admin" : "staff";
-    const storeRole: StoreRole =
-      body.storeRole === "admin" ? "admin" : "staff";
+    const storeSelections =
+      normalizeStoreSelections(body.stores);
 
     if (!email || !email.includes("@")) {
       throw new Error(
@@ -265,8 +449,10 @@ export async function POST(request: Request) {
       );
     }
 
-    if (!body.storeId) {
-      throw new Error("所属店舗を選択してください");
+    if (storeSelections.length === 0) {
+      throw new Error(
+        "所属店舗を1つ以上選択してください"
+      );
     }
 
     const { data, error } =
@@ -293,19 +479,11 @@ export async function POST(request: Request) {
 
       if (profileError) throw profileError;
 
-      const { error: memberError } = await adminClient
-        .from("store_members")
-        .upsert(
-          {
-            store_id: body.storeId,
-            user_id: data.user.id,
-            role: storeRole,
-            updated_at: new Date().toISOString(),
-          },
-          { onConflict: "store_id,user_id" }
-        );
-
-      if (memberError) throw memberError;
+      await replaceMemberships(
+        adminClient,
+        data.user.id,
+        storeSelections
+      );
     } catch (error) {
       await adminClient.auth.admin.deleteUser(
         data.user.id
@@ -328,8 +506,13 @@ export async function PATCH(request: Request) {
       await authorize(request);
     const body = (await request.json()) as {
       userId?: string;
-      action?: "disable" | "enable" | "role";
+      action?:
+        | "disable"
+        | "enable"
+        | "role"
+        | "memberships";
       role?: UserRole;
+      stores?: StoreSelection[];
     };
 
     if (!body.userId || !body.action) {
@@ -356,7 +539,13 @@ export async function PATCH(request: Request) {
       );
     }
 
-    if (body.action === "role") {
+    if (body.action === "memberships") {
+      await replaceMemberships(
+        adminClient,
+        body.userId,
+        normalizeStoreSelections(body.stores)
+      );
+    } else if (body.action === "role") {
       const role: UserRole =
         body.role === "admin" ? "admin" : "staff";
       const { error } = await adminClient

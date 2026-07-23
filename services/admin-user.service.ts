@@ -12,6 +12,11 @@ export type AdminUserMembership = {
   role: StoreRole;
 };
 
+export type UserStoreSelection = {
+  storeId: string;
+  role: StoreRole;
+};
+
 export type AdminUser = {
   id: string;
   email: string | null;
@@ -69,10 +74,20 @@ export async function createLoginUser(input: {
   email: string;
   password: string;
   role: UserRole;
-  storeId: string;
-  storeRole: StoreRole;
+  stores: UserStoreSelection[];
 }): Promise<void> {
   await requestAdminUsers("POST", input);
+}
+
+export async function setLoginUserStores(
+  userId: string,
+  stores: UserStoreSelection[]
+): Promise<void> {
+  await requestAdminUsers("PATCH", {
+    userId,
+    action: "memberships",
+    stores,
+  });
 }
 
 export async function setLoginUserDisabled(

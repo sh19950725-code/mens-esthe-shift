@@ -81,7 +81,8 @@ function createTabUrl(tab: Tab): string {
 }
 
 function ShiftManagementApp() {
-  const { currentStoreId } = useStore();
+  const { currentStoreId, currentStore } = useStore();
+  const canEdit = currentStore.role === "admin";
   const [activeTab, setActiveTab] = useState<Tab>(
     getTabFromUrl
   );
@@ -149,6 +150,15 @@ function ShiftManagementApp() {
         setActiveTab("home");
         return;
       }
+      if (nextTab === "register" && !canEdit) {
+        setActiveTab("home");
+        window.history.replaceState(
+          { tab: "home" },
+          "",
+          createTabUrl("home")
+        );
+        return;
+      }
       setActiveTab(nextTab);
       window.scrollTo({ top: 0 });
     }
@@ -156,10 +166,22 @@ function ShiftManagementApp() {
     window.addEventListener("popstate", handlePopState);
     return () =>
       window.removeEventListener("popstate", handlePopState);
-  }, [isAdmin]);
+  }, [canEdit, isAdmin]);
+
+  useEffect(() => {
+    if (!canEdit && activeTab === "register") {
+      setActiveTab("home");
+      window.history.replaceState(
+        { tab: "home" },
+        "",
+        createTabUrl("home")
+      );
+    }
+  }, [activeTab, canEdit]);
 
   function openTab(tab: Tab) {
     if (ADMIN_TABS.includes(tab) && !isAdmin) return;
+    if (tab === "register" && !canEdit) return;
     if (
       activeTab === "register" &&
       tab !== "register" &&
@@ -182,6 +204,7 @@ function ShiftManagementApp() {
 
   const showBottomNavigation = isNavigationTab(activeTab);
   const showFloatingRegisterButton =
+    canEdit &&
     activeTab !== "register" &&
     activeTab !== "storeSettings" &&
     activeTab !== "rooms" &&
@@ -216,6 +239,7 @@ function ShiftManagementApp() {
         {activeTab === "home" && (
           <>
             <DashboardScreen
+              canEdit={canEdit}
               onOpenToday={() => openTab("today")}
               onOpenWeek={() => openTab("week")}
               onOpenMonth={() => openTab("month")}
@@ -254,15 +278,23 @@ function ShiftManagementApp() {
           </>
         )}
 
-        {activeTab === "today" && <TodayScreen />}
-        {activeTab === "week" && <WeekScreen />}
+        {activeTab === "today" && (
+          <TodayScreen canEdit={canEdit} />
+        )}
+        {activeTab === "week" && (
+          <WeekScreen canEdit={canEdit} />
+        )}
         {activeTab === "month" && (
           <MonthScreen
             onOpenDate={() => openTab("today")}
           />
         )}
-        {activeTab === "register" && <RegisterScreen />}
-        {activeTab === "casts" && <CastScreen />}
+        {activeTab === "register" && canEdit && (
+          <RegisterScreen />
+        )}
+        {activeTab === "casts" && (
+          <CastScreen canEdit={canEdit} />
+        )}
         {activeTab === "storeSettings" && (
           <StoreSettingsScreen
             onBack={() => openTab("home")}

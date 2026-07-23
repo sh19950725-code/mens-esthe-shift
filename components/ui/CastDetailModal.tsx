@@ -12,6 +12,7 @@ type CastDetailModalProps = {
   cast: Cast;
   onClose: () => void;
   onEdit: () => void;
+  canEdit?: boolean;
 };
 
 function formatLocalDate(date: Date): string {
@@ -97,6 +98,7 @@ export default function CastDetailModal({
   cast,
   onClose,
   onEdit,
+  canEdit = false,
 }: CastDetailModalProps) {
   const [shifts, setShifts] = useState<Shift[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -298,9 +300,11 @@ export default function CastDetailModal({
         </section>
 
         <div className="flex gap-3">
-          <Button onClick={onEdit} className="flex-1">
-            編集する
-          </Button>
+          {canEdit && (
+            <Button onClick={onEdit} className="flex-1">
+              編集する
+            </Button>
+          )}
 
           <Button
             onClick={onClose}

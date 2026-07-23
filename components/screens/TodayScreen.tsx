@@ -76,10 +76,12 @@ function isWorkingNow(shift: Shift): boolean {
 
 type TodayScreenProps = {
   initialDate?: string;
+  canEdit?: boolean;
 };
 
 export default function TodayScreen({
   initialDate,
+  canEdit = false,
 }: TodayScreenProps) {
   const [shifts, setShifts] = useState<Shift[]>([]);
   const [workDate, setWorkDate] = useState(
@@ -377,8 +379,16 @@ export default function TodayScreen({
               status={status}
               statusLabel={statusLabel}
               memo={shift.memo}
-              onEdit={() => setEditingShift(shift)}
-              onDelete={() => void deleteShift(shift.id)}
+              onEdit={
+                canEdit
+                  ? () => setEditingShift(shift)
+                  : undefined
+              }
+              onDelete={
+                canEdit
+                  ? () => void deleteShift(shift.id)
+                  : undefined
+              }
             />
           );
         })}
@@ -390,7 +400,7 @@ export default function TodayScreen({
         )}
       </section>
 
-      {editingShift && (
+      {canEdit && editingShift && (
         <EditShiftModal
           shift={editingShift}
           onClose={() => setEditingShift(null)}
