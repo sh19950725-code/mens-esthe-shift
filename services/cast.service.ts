@@ -27,15 +27,28 @@ export async function getActiveCasts(): Promise<Cast[]> {
   return (data as Cast[]) || [];
 }
 
+export type CreateCastInput = {
+  name: string;
+  cast_type: "enrolled" | "scout";
+  scout_name?: string | null;
+  memo?: string | null;
+};
+
 export async function createCast(
-  name: string
+  input: CreateCastInput
 ): Promise<void> {
   const storeId = requireActiveStoreId();
   const { error } = await supabase.from("casts").insert({
     store_id: storeId,
-    name,
-    display_name: name,
+    name: input.name,
+    display_name: input.name,
     status: "active",
+    cast_type: input.cast_type,
+    scout_name:
+      input.cast_type === "scout"
+        ? input.scout_name ?? null
+        : null,
+    memo: input.memo ?? null,
   });
 
   if (error) throw error;

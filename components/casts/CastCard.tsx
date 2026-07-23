@@ -41,9 +41,22 @@ export default function CastCard({
                 </p>
               )}
 
-            <p className="mt-1 text-sm text-gray-500">
-              {isActive ? "在籍中" : "退店済み"}
-            </p>
+            {isActive ? (
+              cast.cast_type === "scout" ? (
+                <p className="mt-1 text-sm font-bold text-blue-600">
+                  {cast.scout_name?.trim() ||
+                    "スカウト"}
+                </p>
+              ) : (
+                <p className="mt-1 text-sm font-bold text-gray-900">
+                  在籍
+                </p>
+              )
+            ) : (
+              <p className="mt-1 text-sm font-bold text-gray-500">
+                退店済み
+              </p>
+            )}
           </button>
 
           {cast.memo && (

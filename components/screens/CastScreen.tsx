@@ -11,7 +11,6 @@ import CastDetailModal from "@/components/ui/CastDetailModal";
 import EditCastModal from "@/components/ui/EditCastModal";
 import {
   activateCast,
-  createCast,
   deactivateCast,
   getActiveCasts,
   getCastShiftCount,
@@ -41,11 +40,13 @@ export default function CastScreen({
 
   const [editingCast, setEditingCast] =
     useState<Cast | null>(null);
+  const [creatingName, setCreatingName] =
+    useState<string | null>(null);
 
   const [selectedCast, setSelectedCast] =
     useState<Cast | null>(null);
 
-  const [isAdding, setIsAdding] = useState(false);
+  const isAdding = creatingName !== null;
   const [deletingCastId, setDeletingCastId] =
     useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -74,7 +75,7 @@ export default function CastScreen({
     }
   }
 
-  async function addCast() {
+  function addCast() {
     const trimmedName = name.trim();
 
     if (!trimmedName) {
@@ -113,21 +114,7 @@ export default function CastScreen({
       return;
     }
 
-    try {
-      setIsAdding(true);
-
-      await createCast(trimmedName);
-
-      setName("");
-      setCurrentView("active");
-
-      await loadCasts();
-    } catch (error) {
-      console.error("キャスト登録エラー:", error);
-      alert("キャスト登録に失敗しました");
-    } finally {
-      setIsAdding(false);
-    }
+    setCreatingName(trimmedName);
   }
 
   async function handleDeactivateCast(cast: Cast) {
@@ -257,6 +244,13 @@ export default function CastScreen({
     setEditingCast(null);
   }
 
+  async function handleCastCreated() {
+    setName("");
+    setCreatingName(null);
+    setCurrentView("active");
+    await loadCasts();
+  }
+
   const casts =
     currentView === "active"
       ? activeCasts
@@ -352,6 +346,14 @@ export default function CastScreen({
           cast={editingCast}
           onClose={() => setEditingCast(null)}
           onSaved={handleCastSaved}
+        />
+      )}
+
+      {canEdit && creatingName && (
+        <EditCastModal
+          initialName={creatingName}
+          onClose={() => setCreatingName(null)}
+          onSaved={handleCastCreated}
         />
       )}
     </>

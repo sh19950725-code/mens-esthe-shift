@@ -5,33 +5,40 @@ import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import {
   checkCastNameConflict,
+  createCast,
   updateCastById,
   type Cast,
 } from "@/services/cast.service";
 
 type EditCastModalProps = {
-  cast: Cast;
+  cast?: Cast;
+  initialName?: string;
   onClose: () => void;
   onSaved: () => Promise<void> | void;
 };
 
 export default function EditCastModal({
   cast,
+  initialName = "",
   onClose,
   onSaved,
 }: EditCastModalProps) {
-  const [name, setName] = useState(cast.name);
+  const [name, setName] = useState(
+    cast?.name ?? initialName
+  );
   const [castType, setCastType] = useState<
     "enrolled" | "scout"
   >(
-    cast.cast_type === "scout"
+    cast?.cast_type === "scout"
       ? "scout"
       : "enrolled"
   );
   const [scoutName, setScoutName] = useState(
-    cast.scout_name || ""
+    cast?.scout_name || ""
   );
-  const [memo, setMemo] = useState(cast.memo || "");
+  const [memo, setMemo] = useState(
+    cast?.memo || ""
+  );
   const [isSaving, setIsSaving] = useState(false);
 
   async function saveCast() {
@@ -48,7 +55,7 @@ export default function EditCastModal({
       const hasNameConflict =
         await checkCastNameConflict(
           trimmedName,
-          cast.id
+          cast?.id
         );
 
       if (hasNameConflict) {
@@ -58,7 +65,7 @@ export default function EditCastModal({
         return;
       }
 
-      await updateCastById(cast.id, {
+      const input = {
         name: trimmedName,
         cast_type: castType,
         scout_name:
@@ -66,7 +73,13 @@ export default function EditCastModal({
             ? scoutName.trim() || null
             : null,
         memo: memo.trim() || null,
-      });
+      };
+
+      if (cast) {
+        await updateCastById(cast.id, input);
+      } else {
+        await createCast(input);
+      }
 
       await onSaved();
       onClose();
@@ -83,11 +96,11 @@ export default function EditCastModal({
       <div className="w-full max-w-md rounded-3xl bg-white p-6 shadow-xl">
         <header className="mb-6">
           <p className="text-sm text-gray-500">
-            キャスト編集
+            {cast ? "キャスト編集" : "キャスト追加"}
           </p>
 
           <h2 className="mt-1 text-2xl font-bold">
-            {cast.name}
+            {cast?.name || initialName || "新しいキャスト"}
           </h2>
         </header>
 
