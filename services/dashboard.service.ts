@@ -47,44 +47,29 @@ type CountResponse = {
 
 export type DashboardSummary = {
   date: string;
-
   workingCount: number;
   tentativeCount: number;
   holidayCount: number;
-
   workingNowCount: number;
-
   usedRoomCount: number;
   totalRoomCount: number;
   availableRoomCount: number;
-
   activeCastCount: number;
   weekShiftCount: number;
-
   latestShifts: Shift[];
 };
 
 function getLocalDateText(date: Date): string {
   const year = date.getFullYear();
-  const month = String(
-    date.getMonth() + 1
-  ).padStart(2, "0");
-  const day = String(date.getDate()).padStart(
-    2,
-    "0"
-  );
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
 
   return `${year}-${month}-${day}`;
 }
 
 function getLocalTimeText(date: Date): string {
-  const hours = String(date.getHours()).padStart(
-    2,
-    "0"
-  );
-  const minutes = String(
-    date.getMinutes()
-  ).padStart(2, "0");
+  const hours = String(date.getHours()).padStart(2, "0");
+  const minutes = String(date.getMinutes()).padStart(2, "0");
 
   return `${hours}:${minutes}:00`;
 }
@@ -95,9 +80,7 @@ function getMonday(date: Date): Date {
   const difference = (day + 6) % 7;
 
   result.setHours(0, 0, 0, 0);
-  result.setDate(
-    result.getDate() - difference
-  );
+  result.setDate(result.getDate() - difference);
 
   return result;
 }
@@ -158,16 +141,10 @@ function checkCountResponse(
 
 export async function getDashboardSummary(): Promise<DashboardSummary> {
   const now = new Date();
-
   const today = getLocalDateText(now);
   const currentTime = getLocalTimeText(now);
-
-  const weekStart = getLocalDateText(
-    getMonday(now)
-  );
-  const weekEnd = getLocalDateText(
-    getSunday(now)
-  );
+  const weekStart = getLocalDateText(getMonday(now));
+  const weekEnd = getLocalDateText(getSunday(now));
 
   const [
     todayShiftResponse,
@@ -208,12 +185,9 @@ export async function getDashboardSummary(): Promise<DashboardSummary> {
 
     supabase
       .from("shifts")
-      .select(
-        "id, room_id",
-        {
-          count: "exact",
-        }
-      )
+      .select("id, room_id", {
+        count: "exact",
+      })
       .eq("work_date", today)
       .neq("status", "holiday")
       .lte("start_time", currentTime)
@@ -225,7 +199,7 @@ export async function getDashboardSummary(): Promise<DashboardSummary> {
         count: "exact",
         head: true,
       })
-      .eq("is_active", true),
+      .eq("status", "active"),
 
     supabase
       .from("casts")
@@ -233,7 +207,7 @@ export async function getDashboardSummary(): Promise<DashboardSummary> {
         count: "exact",
         head: true,
       })
-      .eq("is_active", true),
+      .eq("status", "active"),
 
     supabase
       .from("shifts")
@@ -311,13 +285,11 @@ export async function getDashboardSummary(): Promise<DashboardSummary> {
 
   const workingCount = todayShifts.filter(
     (shift) =>
-      (shift.status ?? "working") ===
-      "working"
+      (shift.status ?? "working") === "working"
   ).length;
 
   const tentativeCount = todayShifts.filter(
-    (shift) =>
-      shift.status === "tentative"
+    (shift) => shift.status === "tentative"
   ).length;
 
   const holidayCount = todayShifts.filter(
@@ -325,9 +297,7 @@ export async function getDashboardSummary(): Promise<DashboardSummary> {
   ).length;
 
   const usedRoomIds = new Set(
-    (
-      workingNowResponse.data ?? []
-    )
+    (workingNowResponse.data ?? [])
       .map((shift) => shift.room_id)
       .filter(
         (roomId): roomId is string =>
@@ -335,46 +305,38 @@ export async function getDashboardSummary(): Promise<DashboardSummary> {
       )
   );
 
-  const totalRoomCount =
-    checkCountResponse(
-      activeRoomResponse,
-      "有効部屋数"
-    );
+  const totalRoomCount = checkCountResponse(
+    activeRoomResponse,
+    "有効部屋数"
+  );
 
-  const activeCastCount =
-    checkCountResponse(
-      activeCastResponse,
-      "有効キャスト数"
-    );
+  const activeCastCount = checkCountResponse(
+    activeCastResponse,
+    "有効キャスト数"
+  );
 
-  const weekShiftCount =
-    checkCountResponse(
-      weekShiftResponse,
-      "週間シフト数"
-    );
+  const weekShiftCount = checkCountResponse(
+    weekShiftResponse,
+    "週間シフト数"
+  );
 
   const usedRoomCount = usedRoomIds.size;
 
   return {
     date: today,
-
     workingCount,
     tentativeCount,
     holidayCount,
-
     workingNowCount:
       workingNowResponse.data?.length ?? 0,
-
     usedRoomCount,
     totalRoomCount,
     availableRoomCount: Math.max(
       totalRoomCount - usedRoomCount,
       0
     ),
-
     activeCastCount,
     weekShiftCount,
-
     latestShifts,
   };
 }
