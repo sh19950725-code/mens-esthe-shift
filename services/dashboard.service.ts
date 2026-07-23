@@ -1,4 +1,10 @@
 import { supabase } from "@/lib/supabase";
+import {
+  getBusinessDate,
+  getExtendedEndMinutes,
+  parseTimeToMinutes,
+} from "@/lib/business-time";
+import { getBusinessHours } from "@/services/store-settings.service";
 import type {
   Shift,
   ShiftStatus,
@@ -59,7 +65,7 @@ export type DashboardSummary = {
   latestShifts: Shift[];
 };
 
-function getLocalDateText(date: Date): string {
+function formatLocalDate(date: Date): string {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
   const day = String(date.getDate()).padStart(2, "0");
@@ -67,11 +73,12 @@ function getLocalDateText(date: Date): string {
   return `${year}-${month}-${day}`;
 }
 
-function getLocalTimeText(date: Date): string {
-  const hours = String(date.getHours()).padStart(2, "0");
-  const minutes = String(date.getMinutes()).padStart(2, "0");
+function parseLocalDate(dateText: string): Date {
+  const [year, month, day] = dateText
+    .split("-")
+    .map(Number);
 
-  return `${hours}:${minutes}:00`;
+  return new Date(year, month - 1, day);
 }
 
 function getMonday(date: Date): Date {
@@ -139,16 +146,77 @@ function checkCountResponse(
   return response.count ?? 0;
 }
 
+function isShiftActiveNow(
+  shift: Shift,
+  now: Date,
+  closingMinutes: number
+): boolean {
+  if (shift.status === "holiday") {
+    return false;
+  }
+
+  let currentMinutes =
+    now.getHours() * 60 + now.getMinutes();
+
+  const closingMinutesAfterMidnight =
+    closingMinutes - 24 * 60;
+
+  if (
+    closingMinutes >= 24 * 60 &&
+    currentMinutes < closingMinutesAfterMidnight
+  ) {
+    currentMinutes += 24 * 60;
+  }
+
+  const startMinutes = parseTimeToMinutes(
+    shift.start_time
+  );
+  const endMinutes = getExtendedEndMinutes(
+    shift.start_time,
+    shift.end_time
+  );
+
+  return (
+    currentMinutes >= startMinutes &&
+    currentMinutes < endMinutes
+  );
+}
+
+const SHIFT_SELECT = `
+  id,
+  cast_id,
+  room_id,
+  work_date,
+  start_time,
+  end_time,
+  status,
+  memo,
+  created_at,
+  casts (
+    id,
+    name,
+    display_name
+  ),
+  rooms (
+    id,
+    name
+  )
+`;
+
 export async function getDashboardSummary(): Promise<DashboardSummary> {
   const now = new Date();
-  const today = getLocalDateText(now);
-  const currentTime = getLocalTimeText(now);
-  const weekStart = getLocalDateText(getMonday(now));
-  const weekEnd = getLocalDateText(getSunday(now));
+  const businessHours = await getBusinessHours();
+  const today = getBusinessDate(now, businessHours);
+  const businessDate = parseLocalDate(today);
+  const weekStart = formatLocalDate(
+    getMonday(businessDate)
+  );
+  const weekEnd = formatLocalDate(
+    getSunday(businessDate)
+  );
 
   const [
     todayShiftResponse,
-    workingNowResponse,
     activeRoomResponse,
     activeCastResponse,
     weekShiftResponse,
@@ -156,42 +224,11 @@ export async function getDashboardSummary(): Promise<DashboardSummary> {
   ] = await Promise.all([
     supabase
       .from("shifts")
-      .select(
-        `
-          id,
-          cast_id,
-          room_id,
-          work_date,
-          start_time,
-          end_time,
-          status,
-          memo,
-          created_at,
-          casts (
-            id,
-            name,
-            display_name
-          ),
-          rooms (
-            id,
-            name
-          )
-        `
-      )
+      .select(SHIFT_SELECT)
       .eq("work_date", today)
       .order("start_time", {
         ascending: true,
       }),
-
-    supabase
-      .from("shifts")
-      .select("id, room_id", {
-        count: "exact",
-      })
-      .eq("work_date", today)
-      .neq("status", "holiday")
-      .lte("start_time", currentTime)
-      .gt("end_time", currentTime),
 
     supabase
       .from("rooms")
@@ -221,28 +258,7 @@ export async function getDashboardSummary(): Promise<DashboardSummary> {
 
     supabase
       .from("shifts")
-      .select(
-        `
-          id,
-          cast_id,
-          room_id,
-          work_date,
-          start_time,
-          end_time,
-          status,
-          memo,
-          created_at,
-          casts (
-            id,
-            name,
-            display_name
-          ),
-          rooms (
-            id,
-            name
-          )
-        `
-      )
+      .select(SHIFT_SELECT)
       .order("created_at", {
         ascending: false,
       })
@@ -252,12 +268,6 @@ export async function getDashboardSummary(): Promise<DashboardSummary> {
   if (todayShiftResponse.error) {
     throw new Error(
       `本日のシフト取得に失敗しました: ${todayShiftResponse.error.message}`
-    );
-  }
-
-  if (workingNowResponse.error) {
-    throw new Error(
-      `現在出勤中の取得に失敗しました: ${workingNowResponse.error.message}`
     );
   }
 
@@ -296,8 +306,17 @@ export async function getDashboardSummary(): Promise<DashboardSummary> {
     (shift) => shift.status === "holiday"
   ).length;
 
+  const workingNowShifts = todayShifts.filter(
+    (shift) =>
+      isShiftActiveNow(
+        shift,
+        now,
+        businessHours.closeMinutes
+      )
+  );
+
   const usedRoomIds = new Set(
-    (workingNowResponse.data ?? [])
+    workingNowShifts
       .map((shift) => shift.room_id)
       .filter(
         (roomId): roomId is string =>
@@ -327,8 +346,7 @@ export async function getDashboardSummary(): Promise<DashboardSummary> {
     workingCount,
     tentativeCount,
     holidayCount,
-    workingNowCount:
-      workingNowResponse.data?.length ?? 0,
+    workingNowCount: workingNowShifts.length,
     usedRoomCount,
     totalRoomCount,
     availableRoomCount: Math.max(

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { formatExtendedTime } from "@/lib/business-time";
 import {
   getShiftsByDateRange,
   type Shift,
@@ -57,10 +58,6 @@ function getStatus(shift: Shift): ShiftStatus {
 
 function getCastName(shift: Shift): string {
   return shift.casts?.display_name || shift.casts?.name || "未設定";
-}
-
-function formatTime(time: string): string {
-  return time.slice(0, 5);
 }
 
 function getStatusLabel(status: ShiftStatus): string {
@@ -500,8 +497,10 @@ export default function MonthScreen({
                       </p>
 
                       <p className="mt-1 text-sm text-gray-600">
-                        {formatTime(shift.start_time)}〜
-                        {formatTime(shift.end_time)}
+                        {formatExtendedTime(
+                          shift.start_time,
+                          shift.end_time
+                        )}
                       </p>
 
                       {status !== "holiday" &&

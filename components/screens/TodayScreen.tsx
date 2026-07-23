@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import ShiftCard from "@/components/cards/ShiftCard";
 import EditShiftModal from "@/components/ui/EditShiftModal";
+import { formatExtendedTime } from "@/lib/business-time";
 import { getShiftStatus } from "@/lib/time";
 import {
   deleteShiftById,
@@ -23,6 +24,23 @@ function getLocalToday(): string {
   const month = String(today.getMonth() + 1).padStart(2, "0");
   const day = String(today.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
+}
+
+function moveLocalDate(
+  dateText: string,
+  amount: number
+): string {
+  const [year, month, day] = dateText.split("-").map(Number);
+  const date = new Date(year, month - 1, day);
+  date.setDate(date.getDate() + amount);
+
+  const nextYear = date.getFullYear();
+  const nextMonth = String(date.getMonth() + 1).padStart(
+    2,
+    "0"
+  );
+  const nextDay = String(date.getDate()).padStart(2, "0");
+  return `${nextYear}-${nextMonth}-${nextDay}`;
 }
 
 function getCastName(shift: Shift): string {
@@ -56,9 +74,17 @@ function isWorkingNow(shift: Shift): boolean {
   );
 }
 
-export default function TodayScreen() {
+type TodayScreenProps = {
+  initialDate?: string;
+};
+
+export default function TodayScreen({
+  initialDate,
+}: TodayScreenProps) {
   const [shifts, setShifts] = useState<Shift[]>([]);
-  const [workDate, setWorkDate] = useState(getLocalToday());
+  const [workDate, setWorkDate] = useState(
+    initialDate || getLocalToday()
+  );
   const [editingShift, setEditingShift] =
     useState<Shift | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -68,6 +94,12 @@ export default function TodayScreen() {
   useEffect(() => {
     void loadShifts();
   }, [workDate]);
+
+  useEffect(() => {
+    if (initialDate) {
+      setWorkDate(initialDate);
+    }
+  }, [initialDate]);
 
   async function loadShifts() {
     try {
@@ -206,6 +238,42 @@ export default function TodayScreen() {
         type="date"
       />
 
+      <div className="mb-4 grid grid-cols-3 gap-2">
+        <button
+          type="button"
+          onClick={() =>
+            setWorkDate((current) =>
+              moveLocalDate(current, -1)
+            )
+          }
+          className="rounded-xl border border-gray-200 bg-white px-3 py-3 text-sm font-bold text-gray-600 shadow-sm"
+        >
+          ‹ 前日
+        </button>
+        <button
+          type="button"
+          onClick={() => setWorkDate(getLocalToday())}
+          className={`rounded-xl px-3 py-3 text-sm font-bold ${
+            workDate === getLocalToday()
+              ? "bg-gray-900 text-white"
+              : "border border-gray-200 bg-white text-gray-600 shadow-sm"
+          }`}
+        >
+          今日
+        </button>
+        <button
+          type="button"
+          onClick={() =>
+            setWorkDate((current) =>
+              moveLocalDate(current, 1)
+            )
+          }
+          className="rounded-xl border border-gray-200 bg-white px-3 py-3 text-sm font-bold text-gray-600 shadow-sm"
+        >
+          翌日 ›
+        </button>
+      </div>
+
       <section className="mb-4 grid grid-cols-2 gap-2">
         <SummaryCard
           label="通常出勤"
@@ -302,10 +370,10 @@ export default function TodayScreen() {
                   ? null
                   : shift.rooms?.name || null
               }
-              time={`${shift.start_time.slice(
-                0,
-                5
-              )}〜${shift.end_time.slice(0, 5)}`}
+              time={formatExtendedTime(
+                shift.start_time,
+                shift.end_time
+              )}
               status={status}
               statusLabel={statusLabel}
               memo={shift.memo}

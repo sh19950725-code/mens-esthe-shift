@@ -6,6 +6,7 @@ import ShiftTimeTemplates from "@/components/register/ShiftTimeTemplates";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import Select from "@/components/ui/Select";
+import { formatExtendedTime } from "@/lib/business-time";
 import {
   getActiveCasts,
   type Cast,
@@ -225,8 +226,8 @@ export default function RegisterScreen() {
       alert("出勤時間と退勤時間を入力してください");
       return false;
     }
-    if (startTime >= endTime) {
-      alert("退勤時間は出勤時間より後に設定してください");
+    if (startTime === endTime) {
+      alert("出勤時間と退勤時間を同じにはできません");
       return false;
     }
     return true;
@@ -706,6 +707,23 @@ export default function RegisterScreen() {
               type="time"
             />
           </Field>
+
+          {startTime &&
+            endTime &&
+            endTime < startTime && (
+              <div className="col-span-2 rounded-xl border border-blue-200 bg-blue-50 p-3">
+                <p className="text-sm font-bold text-blue-800">
+                  翌日の退勤として登録します
+                </p>
+                <p className="mt-1 text-xs text-blue-700">
+                  店舗時間表記：
+                  {formatExtendedTime(
+                    startTime,
+                    endTime
+                  )}
+                </p>
+              </div>
+            )}
         </div>
 
         <Field label="備考">

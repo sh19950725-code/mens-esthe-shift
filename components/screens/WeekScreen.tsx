@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import EditShiftModal from "@/components/ui/EditShiftModal";
+import { formatExtendedTime } from "@/lib/business-time";
 import {
   deleteShiftById,
   getShiftsByDateRange,
@@ -337,8 +338,10 @@ export default function WeekScreen() {
                                 {getCastName(shift)}
                               </p>
                               <p className="mt-1 text-sm text-gray-600">
-                                {shift.start_time.slice(0, 5)}
-                                〜{shift.end_time.slice(0, 5)}
+                                {formatExtendedTime(
+                                  shift.start_time,
+                                  shift.end_time
+                                )}
                               </p>
                               {status !== "holiday" &&
                                 shift.rooms?.name && (

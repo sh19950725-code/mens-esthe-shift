@@ -8,6 +8,7 @@ import {
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import Select from "@/components/ui/Select";
+import { formatExtendedTime } from "@/lib/business-time";
 import {
   checkShiftConflict,
   updateShiftById,
@@ -378,6 +379,11 @@ export default function EditShiftModal({
               startTime !== endTime && (
                 <p className="rounded-xl bg-blue-50 p-3 text-xs text-blue-700">
                   翌日の退勤時刻として登録します。
+                  店舗時間表記：
+                  {formatExtendedTime(
+                    startTime,
+                    endTime
+                  )}
                 </p>
               )}
 

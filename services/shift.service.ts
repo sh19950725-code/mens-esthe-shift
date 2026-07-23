@@ -1,4 +1,9 @@
 import { supabase } from "@/lib/supabase";
+import {
+  formatExtendedTime,
+  getExtendedEndMinutes,
+  parseTimeToMinutes,
+} from "@/lib/business-time";
 
 type CastRelation = {
   id?: string;
@@ -30,6 +35,16 @@ type RawShift = {
   rooms: RoomRelation | RoomRelation[] | null;
 };
 
+type RawConflictShift = {
+  id: string;
+  cast_id: string;
+  room_id: string | null;
+  start_time: string;
+  end_time: string;
+  casts: CastRelation | CastRelation[] | null;
+  rooms: RoomRelation | RoomRelation[] | null;
+};
+
 export type Shift = {
   id: string;
   cast_id: string;
@@ -40,7 +55,6 @@ export type Shift = {
   status: ShiftStatus | null;
   memo: string | null;
   created_at?: string;
-
   casts?: CastRelation | null;
   rooms?: RoomRelation | null;
 };
@@ -86,6 +100,27 @@ type ConflictResult = {
   ok: boolean;
   message: string;
 };
+
+const SHIFT_SELECT = `
+  id,
+  cast_id,
+  room_id,
+  work_date,
+  start_time,
+  end_time,
+  status,
+  memo,
+  created_at,
+  casts (
+    id,
+    name,
+    display_name
+  ),
+  rooms (
+    id,
+    name
+  )
+`;
 
 function getFirstRelation<T>(
   relation: T | T[] | null
@@ -133,13 +168,11 @@ function parseLocalDate(dateText: string): Date {
 
 function formatLocalDate(date: Date): string {
   const year = date.getFullYear();
-  const month = String(
-    date.getMonth() + 1
-  ).padStart(2, "0");
-  const day = String(date.getDate()).padStart(
+  const month = String(date.getMonth() + 1).padStart(
     2,
     "0"
   );
+  const day = String(date.getDate()).padStart(2, "0");
 
   return `${year}-${month}-${day}`;
 }
@@ -152,7 +185,6 @@ function getDatesInRange(
   const start = parseLocalDate(startDate);
   const end = parseLocalDate(endDate);
   const dates: string[] = [];
-
   const current = new Date(start);
 
   while (current <= end) {
@@ -166,31 +198,37 @@ function getDatesInRange(
   return dates;
 }
 
+function doTimeRangesOverlap(
+  firstStartTime: string,
+  firstEndTime: string,
+  secondStartTime: string,
+  secondEndTime: string
+): boolean {
+  const firstStart = parseTimeToMinutes(firstStartTime);
+  const firstEnd = getExtendedEndMinutes(
+    firstStartTime,
+    firstEndTime
+  );
+  const secondStart = parseTimeToMinutes(
+    secondStartTime
+  );
+  const secondEnd = getExtendedEndMinutes(
+    secondStartTime,
+    secondEndTime
+  );
+
+  return (
+    firstStart < secondEnd &&
+    firstEnd > secondStart
+  );
+}
+
 export async function getShiftsByDate(
   workDate: string
 ): Promise<Shift[]> {
   const { data, error } = await supabase
     .from("shifts")
-    .select(`
-      id,
-      cast_id,
-      room_id,
-      work_date,
-      start_time,
-      end_time,
-      status,
-      memo,
-      created_at,
-      casts (
-        id,
-        name,
-        display_name
-      ),
-      rooms (
-        id,
-        name
-      )
-    `)
+    .select(SHIFT_SELECT)
     .eq("work_date", workDate)
     .order("start_time", { ascending: true });
 
@@ -207,26 +245,7 @@ export async function getShiftsByDateRange(
 ): Promise<Shift[]> {
   const { data, error } = await supabase
     .from("shifts")
-    .select(`
-      id,
-      cast_id,
-      room_id,
-      work_date,
-      start_time,
-      end_time,
-      status,
-      memo,
-      created_at,
-      casts (
-        id,
-        name,
-        display_name
-      ),
-      rooms (
-        id,
-        name
-      )
-    `)
+    .select(SHIFT_SELECT)
     .gte("work_date", startDate)
     .lte("work_date", endDate)
     .order("work_date", { ascending: true })
@@ -244,26 +263,7 @@ export async function getShiftsByCastId(
 ): Promise<Shift[]> {
   const { data, error } = await supabase
     .from("shifts")
-    .select(`
-      id,
-      cast_id,
-      room_id,
-      work_date,
-      start_time,
-      end_time,
-      status,
-      memo,
-      created_at,
-      casts (
-        id,
-        name,
-        display_name
-      ),
-      rooms (
-        id,
-        name
-      )
-    `)
+    .select(SHIFT_SELECT)
     .eq("cast_id", castId)
     .order("work_date", { ascending: false })
     .order("start_time", { ascending: true });
@@ -285,21 +285,22 @@ export async function checkShiftConflict(
 ): Promise<ConflictResult> {
   const { data, error } = await supabase
     .from("shifts")
-    .select(`
-      id,
-      cast_id,
-      room_id,
-      start_time,
-      end_time,
-      status,
-      casts (
-        name,
-        display_name
-      ),
-      rooms (
-        name
-      )
-    `)
+    .select(
+      `
+        id,
+        cast_id,
+        room_id,
+        start_time,
+        end_time,
+        casts (
+          name,
+          display_name
+        ),
+        rooms (
+          name
+        )
+      `
+    )
     .eq("work_date", workDate)
     .neq("status", "holiday");
 
@@ -307,29 +308,25 @@ export async function checkShiftConflict(
     throw error;
   }
 
-  const shifts = (data ?? []).filter(
-    (shift) => shift.id !== excludeShiftId
+  const shifts = (
+    (data ?? []) as unknown as RawConflictShift[]
+  ).filter((shift) => shift.id !== excludeShiftId);
+
+  const castConflict = shifts.find(
+    (shift) =>
+      shift.cast_id === castId &&
+      doTimeRangesOverlap(
+        startTime,
+        endTime,
+        shift.start_time,
+        shift.end_time
+      )
   );
-
-  const castConflict = shifts.find((shift) => {
-    if (shift.cast_id !== castId) {
-      return false;
-    }
-
-    return (
-      startTime < shift.end_time &&
-      endTime > shift.start_time
-    );
-  });
 
   if (castConflict) {
     const castData = getFirstRelation(
-      castConflict.casts as
-        | CastRelation
-        | CastRelation[]
-        | null
+      castConflict.casts
     );
-
     const castName =
       castData?.display_name ||
       castData?.name ||
@@ -339,42 +336,34 @@ export async function checkShiftConflict(
       ok: false,
       message:
         `${castName}は` +
-        `${castConflict.start_time.slice(0, 5)}〜` +
-        `${castConflict.end_time.slice(0, 5)}に` +
-        "別のシフトが登録されています。",
+        `${formatExtendedTime(
+          castConflict.start_time,
+          castConflict.end_time
+        )}に別のシフトが登録されています。`,
     };
   }
 
   if (roomId) {
-    const roomConflict = shifts.find((shift) => {
-      if (shift.room_id !== roomId) {
-        return false;
-      }
-
-      return (
-        startTime < shift.end_time &&
-        endTime > shift.start_time
-      );
-    });
+    const roomConflict = shifts.find(
+      (shift) =>
+        shift.room_id === roomId &&
+        doTimeRangesOverlap(
+          startTime,
+          endTime,
+          shift.start_time,
+          shift.end_time
+        )
+    );
 
     if (roomConflict) {
       const roomData = getFirstRelation(
-        roomConflict.rooms as
-          | RoomRelation
-          | RoomRelation[]
-          | null
+        roomConflict.rooms
       );
-
       const castData = getFirstRelation(
-        roomConflict.casts as
-          | CastRelation
-          | CastRelation[]
-          | null
+        roomConflict.casts
       );
-
       const roomName =
         roomData?.name || "選択した部屋";
-
       const castName =
         castData?.display_name ||
         castData?.name ||
@@ -384,9 +373,10 @@ export async function checkShiftConflict(
         ok: false,
         message:
           `${roomName}は` +
-          `${roomConflict.start_time.slice(0, 5)}〜` +
-          `${roomConflict.end_time.slice(0, 5)}に` +
-          `${castName}が使用しています。`,
+          `${formatExtendedTime(
+            roomConflict.start_time,
+            roomConflict.end_time
+          )}に${castName}が使用しています。`,
       };
     }
   }
@@ -414,33 +404,14 @@ export async function createShift(
       status: input.status,
       memo: input.memo,
     })
-    .select(`
-      id,
-      cast_id,
-      room_id,
-      work_date,
-      start_time,
-      end_time,
-      status,
-      memo,
-      created_at,
-      casts (
-        id,
-        name,
-        display_name
-      ),
-      rooms (
-        id,
-        name
-      )
-    `)
+    .select(SHIFT_SELECT)
     .single();
 
   if (error) {
     throw error;
   }
 
-  return normalizeShift(data as RawShift);
+  return normalizeShift(data as unknown as RawShift);
 }
 
 export async function createShiftsBulk(
@@ -463,13 +434,12 @@ export async function createShiftsBulk(
     input.end_date,
     input.weekdays
   );
-
   const shiftsToInsert: CreateShiftInput[] = [];
   const skippedDates: string[] = [];
 
   for (const workDate of targetDates) {
     if (input.status !== "holiday") {
-      const conflictResult =
+      const conflict =
         await checkShiftConflict(
           input.cast_id,
           input.room_id,
@@ -478,7 +448,7 @@ export async function createShiftsBulk(
           input.end_time
         );
 
-      if (!conflictResult.ok) {
+      if (!conflict.ok) {
         skippedDates.push(workDate);
         continue;
       }
