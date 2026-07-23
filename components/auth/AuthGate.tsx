@@ -333,7 +333,7 @@ export default function AuthGate({ children }: AuthGateProps) {
           </button>
         </div>
       )}
-      <div className="fixed right-3 top-3 z-[80] flex gap-2">
+      <div className="mx-auto flex w-full max-w-md justify-end gap-2 px-4 pt-3 sm:fixed sm:right-3 sm:top-3 sm:z-[80] sm:w-auto sm:max-w-none sm:px-0 sm:pt-0">
         <button
           type="button"
           onClick={() => {
