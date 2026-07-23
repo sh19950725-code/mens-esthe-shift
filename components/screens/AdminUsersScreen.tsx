@@ -8,6 +8,10 @@ import {
 } from "react";
 import { supabase } from "@/lib/supabase";
 import { useStore } from "@/components/store/StoreProvider";
+import RegistrationRequestsPanel from "@/components/admin/RegistrationRequestsPanel";
+import type {
+  RegistrationRequest,
+} from "@/services/registration-request.service";
 import {
   createLoginUser,
   getAdminUsers,
@@ -192,6 +196,20 @@ export default function AdminUsersScreen({
         storeId,
         role: storeRole,
       })
+    );
+  }
+
+  function useRegistrationRequest(
+    request: RegistrationRequest
+  ) {
+    setEmail(request.email);
+    setRole("staff");
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    });
+    alert(
+      "申請メールアドレスを発行欄へ反映しました。初期パスワードと所属店舗を設定してください。"
     );
   }
 
@@ -395,6 +413,10 @@ export default function AdminUsersScreen({
           </button>
         )}
       </header>
+
+      <RegistrationRequestsPanel
+        onUseRequest={useRegistrationRequest}
+      />
 
       <section className="mb-5 rounded-2xl border bg-white p-4 shadow-sm">
         <h2 className="font-bold">

@@ -9,6 +9,7 @@ import {
 } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase";
+import RegistrationRequestForm from "@/components/auth/RegistrationRequestForm";
 
 type AuthGateProps = {
   children: ReactNode;
@@ -303,9 +304,7 @@ export default function AuthGate({ children }: AuthGateProps) {
             </button>
           </form>
 
-          <p className="mt-5 text-center text-xs text-gray-400">
-            アカウント発行は管理者へ依頼してください。
-          </p>
+          <RegistrationRequestForm />
         </div>
       </main>
     );
