@@ -10,6 +10,7 @@ type CastListProps = {
   onEdit: (cast: Cast) => void;
   onDeactivate: (cast: Cast) => void;
   onActivate: (cast: Cast) => void;
+  onDelete: (cast: Cast) => void;
 };
 
 export default function CastList({
@@ -21,6 +22,7 @@ export default function CastList({
   onEdit,
   onDeactivate,
   onActivate,
+  onDelete,
 }: CastListProps) {
   if (totalCount === 0) {
     return (
@@ -51,6 +53,7 @@ export default function CastList({
           onEdit={() => onEdit(cast)}
           onDeactivate={() => onDeactivate(cast)}
           onActivate={() => onActivate(cast)}
+          onDelete={() => onDelete(cast)}
         />
       ))}
     </section>

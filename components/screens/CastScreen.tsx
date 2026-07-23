@@ -14,7 +14,9 @@ import {
   createCast,
   deactivateCast,
   getActiveCasts,
+  getCastShiftCount,
   getInactiveCasts,
+  permanentlyDeleteInactiveCast,
   type Cast,
 } from "@/services/cast.service";
 
@@ -40,6 +42,8 @@ export default function CastScreen() {
     useState<Cast | null>(null);
 
   const [isAdding, setIsAdding] = useState(false);
+  const [deletingCastId, setDeletingCastId] =
+    useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
@@ -182,6 +186,68 @@ export default function CastScreen() {
     }
   }
 
+  async function handleDeleteCast(cast: Cast) {
+    if (deletingCastId) {
+      return;
+    }
+
+    const displayName =
+      cast.display_name || cast.name;
+
+    try {
+      setDeletingCastId(cast.id);
+
+      const shiftCount = await getCastShiftCount(cast.id);
+      const historyText =
+        shiftCount > 0
+          ? `\n関連するシフト履歴 ${shiftCount}件も削除されます。`
+          : "";
+
+      const confirmed = window.confirm(
+        `${displayName}を完全に削除しますか？${historyText}\n\nこの操作は取り消せません。`
+      );
+
+      if (!confirmed) {
+        return;
+      }
+
+      const typedName = window.prompt(
+        `確認のため「${displayName}」と入力してください。`
+      );
+
+      if (typedName !== displayName) {
+        if (typedName !== null) {
+          alert(
+            "名前が一致しないため、削除を中止しました"
+          );
+        }
+        return;
+      }
+
+      await permanentlyDeleteInactiveCast(cast.id);
+
+      if (selectedCast?.id === cast.id) {
+        setSelectedCast(null);
+      }
+
+      if (editingCast?.id === cast.id) {
+        setEditingCast(null);
+      }
+
+      await loadCasts();
+      alert(`${displayName}を完全に削除しました`);
+    } catch (error) {
+      console.error("キャスト完全削除エラー:", error);
+      alert(
+        error instanceof Error
+          ? error.message
+          : "キャストの完全削除に失敗しました"
+      );
+    } finally {
+      setDeletingCastId(null);
+    }
+  }
+
   async function handleCastSaved() {
     await loadCasts();
     setEditingCast(null);
@@ -260,6 +326,7 @@ export default function CastScreen() {
         onEdit={setEditingCast}
         onDeactivate={handleDeactivateCast}
         onActivate={handleActivateCast}
+        onDelete={handleDeleteCast}
       />
 
       {selectedCast && (

@@ -7,6 +7,7 @@ type CastCardProps = {
   onEdit: () => void;
   onDeactivate: () => void;
   onActivate: () => void;
+  onDelete: () => void;
 };
 
 export default function CastCard({
@@ -16,6 +17,7 @@ export default function CastCard({
   onEdit,
   onDeactivate,
   onActivate,
+  onDelete,
 }: CastCardProps) {
   return (
     <div className="rounded-2xl border bg-white p-4 shadow-sm">
@@ -49,7 +51,7 @@ export default function CastCard({
           )}
         </div>
 
-        <div className="flex shrink-0 gap-2">
+        <div className="flex shrink-0 flex-wrap justify-end gap-2">
           <button
             type="button"
             onClick={onEdit}
@@ -67,13 +69,23 @@ export default function CastCard({
               退店
             </button>
           ) : (
-            <button
-              type="button"
-              onClick={onActivate}
-              className="rounded-lg bg-green-50 px-3 py-2 text-xs font-bold text-green-600"
-            >
-              再表示
-            </button>
+            <>
+              <button
+                type="button"
+                onClick={onActivate}
+                className="rounded-lg bg-green-50 px-3 py-2 text-xs font-bold text-green-600"
+              >
+                再表示
+              </button>
+
+              <button
+                type="button"
+                onClick={onDelete}
+                className="rounded-lg bg-red-600 px-3 py-2 text-xs font-bold text-white"
+              >
+                完全削除
+              </button>
+            </>
           )}
         </div>
       </div>

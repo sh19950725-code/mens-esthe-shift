@@ -77,6 +77,56 @@ export async function activateCast(
   if (error) throw error;
 }
 
+export async function getCastShiftCount(
+  id: string
+): Promise<number> {
+  const storeId = requireActiveStoreId();
+  const { count, error } = await supabase
+    .from("shifts")
+    .select("id", { count: "exact", head: true })
+    .eq("store_id", storeId)
+    .eq("cast_id", id);
+
+  if (error) throw error;
+  return count ?? 0;
+}
+
+export async function permanentlyDeleteInactiveCast(
+  id: string
+): Promise<void> {
+  const storeId = requireActiveStoreId();
+
+  const { data: cast, error: castError } = await supabase
+    .from("casts")
+    .select("id, status")
+    .eq("store_id", storeId)
+    .eq("id", id)
+    .maybeSingle();
+
+  if (castError) throw castError;
+
+  if (!cast) {
+    throw new Error(
+      "削除対象のキャストが見つかりません"
+    );
+  }
+
+  if (cast.status !== "inactive") {
+    throw new Error(
+      "在籍中のキャストは完全削除できません"
+    );
+  }
+
+  const { error } = await supabase
+    .from("casts")
+    .delete()
+    .eq("store_id", storeId)
+    .eq("id", id)
+    .eq("status", "inactive");
+
+  if (error) throw error;
+}
+
 export type UpdateCastInput = {
   name?: string;
   display_name?: string | null;
