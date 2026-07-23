@@ -8,6 +8,7 @@ export type RegistrationRequestStatus =
 
 export type RegistrationRequest = {
   id: string;
+  user_id: string | null;
   name: string;
   email: string;
   desired_store: string | null;
@@ -22,27 +23,27 @@ export type CreateRegistrationRequestInput = {
   email: string;
   desiredStore?: string;
   message?: string;
+  password: string;
 };
 
 export async function createRegistrationRequest(
   input: CreateRegistrationRequestInput
 ): Promise<void> {
-  const { error } = await supabase
-    .from("registration_requests")
-    .insert({
-      name: input.name.trim(),
-      email: input.email.trim().toLowerCase(),
-      desired_store: input.desiredStore?.trim() || null,
-      message: input.message?.trim() || null,
-    });
+  const response = await fetch("/api/registration-requests", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(input),
+  });
+  const result = (await response.json()) as {
+    error?: string;
+  };
 
-  if (error) {
-    if (error.code === "23505") {
-      throw new Error(
-        "このメールアドレスの申請はすでに受け付けています"
-      );
-    }
-    throw error;
+  if (!response.ok) {
+    throw new Error(
+      result.error ?? "利用申請の送信に失敗しました"
+    );
   }
 }
 

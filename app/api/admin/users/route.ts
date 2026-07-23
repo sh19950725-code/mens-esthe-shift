@@ -507,13 +507,124 @@ export async function PATCH(request: Request) {
         | "disable"
         | "enable"
         | "role"
-        | "memberships";
+        | "memberships"
+        | "approve-registration"
+        | "reject-registration";
+      requestId?: string;
       role?: UserRole;
       stores?: StoreSelection[];
     };
 
     if (!body.userId || !body.action) {
       throw new Error("操作内容が正しくありません");
+    }
+
+    if (
+      body.action === "approve-registration" ||
+      body.action === "reject-registration"
+    ) {
+      if (!body.requestId) {
+        throw new Error("申請情報が指定されていません");
+      }
+
+      const { data: requestRow, error: requestError } =
+        await adminClient
+          .from("registration_requests")
+          .select("id, user_id, status, email")
+          .eq("id", body.requestId)
+          .maybeSingle();
+
+      if (requestError) throw requestError;
+      if (
+        !requestRow ||
+        requestRow.user_id !== body.userId
+      ) {
+        throw new Error(
+          "申請とアカウントの情報が一致しません"
+        );
+      }
+      if (
+        requestRow.status !== "pending" &&
+        requestRow.status !== "processing"
+      ) {
+        throw new Error(
+          "この申請はすでに処理されています"
+        );
+      }
+
+      if (body.action === "reject-registration") {
+        const { error: statusError } = await adminClient
+          .from("registration_requests")
+          .update({
+            status: "rejected",
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", body.requestId);
+
+        if (statusError) throw statusError;
+
+        const { error: deleteError } =
+          await adminClient.auth.admin.deleteUser(
+            body.userId
+          );
+        if (deleteError) throw deleteError;
+
+        return NextResponse.json({ ok: true });
+      }
+
+      const selections =
+        normalizeStoreSelections(body.stores);
+      if (selections.length === 0) {
+        throw new Error(
+          "所属店舗を1つ以上選択してください"
+        );
+      }
+
+      const role: UserRole =
+        body.role === "admin" ? "admin" : "staff";
+
+      const { error: profileError } =
+        await adminClient.from("profiles").upsert(
+          {
+            id: body.userId,
+            email: requestRow.email,
+            role,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "id" }
+        );
+      if (profileError) throw profileError;
+
+      await replaceMemberships(
+        adminClient,
+        body.userId,
+        selections
+      );
+
+      const { error: enableError } =
+        await adminClient.auth.admin.updateUserById(
+          body.userId,
+          {
+            ban_duration: "none",
+            user_metadata: {
+              registration_pending: false,
+              must_change_password: false,
+            },
+          }
+        );
+      if (enableError) throw enableError;
+
+      const { error: completeError } =
+        await adminClient
+          .from("registration_requests")
+          .update({
+            status: "completed",
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", body.requestId);
+      if (completeError) throw completeError;
+
+      return NextResponse.json({ ok: true });
     }
 
     if (

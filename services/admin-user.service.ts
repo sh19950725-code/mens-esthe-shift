@@ -115,3 +115,25 @@ export async function permanentlyDeleteLoginUser(
 ): Promise<void> {
   await requestAdminUsers("DELETE", { userId });
 }
+
+export async function approveRegistrationRequest(input: {
+  requestId: string;
+  userId: string;
+  role: UserRole;
+  stores: UserStoreSelection[];
+}): Promise<void> {
+  await requestAdminUsers("PATCH", {
+    action: "approve-registration",
+    ...input,
+  });
+}
+
+export async function rejectRegistrationRequest(input: {
+  requestId: string;
+  userId: string;
+}): Promise<void> {
+  await requestAdminUsers("PATCH", {
+    action: "reject-registration",
+    ...input,
+  });
+}

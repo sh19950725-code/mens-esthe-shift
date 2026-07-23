@@ -9,6 +9,9 @@ export default function RegistrationRequestForm() {
   const [email, setEmail] = useState("");
   const [desiredStore, setDesiredStore] = useState("");
   const [message, setMessage] = useState("");
+  const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] =
+    useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [successMessage, setSuccessMessage] = useState("");
@@ -26,6 +29,18 @@ export default function RegistrationRequestForm() {
       setErrorMessage("メールアドレスを入力してください");
       return;
     }
+    if (password.length < 8) {
+      setErrorMessage(
+        "ログイン用パスワードは8文字以上で入力してください"
+      );
+      return;
+    }
+    if (password !== confirmPassword) {
+      setErrorMessage(
+        "確認用パスワードが一致しません"
+      );
+      return;
+    }
 
     try {
       setIsSubmitting(true);
@@ -34,13 +49,16 @@ export default function RegistrationRequestForm() {
         email,
         desiredStore,
         message,
+        password,
       });
       setName("");
       setEmail("");
       setDesiredStore("");
       setMessage("");
+      setPassword("");
+      setConfirmPassword("");
       setSuccessMessage(
-        "利用申請を受け付けました。管理者からの連絡をお待ちください。"
+        "利用申請を受け付けました。管理者が承認すると、設定したメールアドレスとパスワードでログインできます。"
       );
     } catch (error) {
       setErrorMessage(
@@ -72,6 +90,51 @@ export default function RegistrationRequestForm() {
           onSubmit={submitRequest}
           className="mt-4 space-y-3 rounded-2xl bg-gray-50 p-4"
         >
+          <div>
+            <label
+              htmlFor="request-password"
+              className="mb-1 block text-sm font-bold text-gray-700"
+            >
+              ログイン用パスワード
+            </label>
+            <input
+              id="request-password"
+              type="password"
+              value={password}
+              onChange={(event) =>
+                setPassword(event.target.value)
+              }
+              disabled={isSubmitting}
+              autoComplete="new-password"
+              className="w-full rounded-xl border border-gray-300 bg-white p-3 text-gray-900 outline-none focus:border-gray-900"
+              placeholder="8文字以上"
+            />
+          </div>
+
+          <div>
+            <label
+              htmlFor="request-confirm-password"
+              className="mb-1 block text-sm font-bold text-gray-700"
+            >
+              パスワード（確認）
+            </label>
+            <input
+              id="request-confirm-password"
+              type="password"
+              value={confirmPassword}
+              onChange={(event) =>
+                setConfirmPassword(event.target.value)
+              }
+              disabled={isSubmitting}
+              autoComplete="new-password"
+              className="w-full rounded-xl border border-gray-300 bg-white p-3 text-gray-900 outline-none focus:border-gray-900"
+              placeholder="同じパスワードをもう一度入力"
+            />
+            <p className="mt-1 text-xs text-gray-600">
+              パスワードは申請一覧には保存・表示されません。
+            </p>
+          </div>
+
           <div>
             <label
               htmlFor="request-name"
