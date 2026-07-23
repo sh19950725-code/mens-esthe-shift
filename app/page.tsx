@@ -243,10 +243,10 @@ function ShiftManagementApp() {
                   className="rounded-2xl border border-gray-200 bg-white p-4 text-left shadow-sm"
                 >
                   <p className="font-bold text-gray-900">
-                    スタッフ権限
+                    ユーザー管理
                   </p>
                   <p className="mt-1 text-xs text-gray-500">
-                    管理者を設定
+                    発行・停止・権限設定
                   </p>
                 </button>
               </div>
