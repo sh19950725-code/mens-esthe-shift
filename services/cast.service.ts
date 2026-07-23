@@ -7,13 +7,18 @@ export type Cast = {
   display_name: string | null;
   status: string;
   memo: string | null;
+  cast_type: "enrolled" | "scout";
+  scout_name: string | null;
 };
+
+const CAST_SELECT =
+  "id, name, display_name, status, memo, cast_type, scout_name";
 
 export async function getActiveCasts(): Promise<Cast[]> {
   const storeId = requireActiveStoreId();
   const { data, error } = await supabase
     .from("casts")
-    .select("id, name, display_name, status, memo")
+    .select(CAST_SELECT)
     .eq("store_id", storeId)
     .eq("status", "active")
     .order("created_at", { ascending: true });
@@ -55,7 +60,7 @@ export async function getInactiveCasts(): Promise<
   const storeId = requireActiveStoreId();
   const { data, error } = await supabase
     .from("casts")
-    .select("id, name, display_name, status, memo")
+    .select(CAST_SELECT)
     .eq("store_id", storeId)
     .eq("status", "inactive")
     .order("created_at", { ascending: true });
@@ -131,6 +136,8 @@ export type UpdateCastInput = {
   name?: string;
   display_name?: string | null;
   memo?: string | null;
+  cast_type?: "enrolled" | "scout";
+  scout_name?: string | null;
 };
 
 export async function updateCastById(
