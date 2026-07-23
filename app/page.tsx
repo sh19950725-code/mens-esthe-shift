@@ -2,6 +2,10 @@
 
 import { useEffect, useState } from "react";
 import AuthGate from "@/components/auth/AuthGate";
+import StoreProvider, {
+  useStore,
+} from "@/components/store/StoreProvider";
+import StoreSwitcher from "@/components/store/StoreSwitcher";
 import BottomNavigation, {
   type NavigationTab,
 } from "@/components/BottomNavigation";
@@ -11,6 +15,7 @@ import CastScreen from "@/components/screens/CastScreen";
 import DashboardScreen from "@/components/screens/DashboardScreen";
 import MonthScreen from "@/components/screens/MonthScreen";
 import RegisterScreen from "@/components/screens/RegisterScreen";
+import StoreSettingsScreen from "@/components/screens/StoreSettingsScreen";
 import TodayScreen from "@/components/screens/TodayScreen";
 import WeekScreen from "@/components/screens/WeekScreen";
 import { getCurrentProfile } from "@/services/profile.service";
@@ -22,6 +27,7 @@ type Tab =
   | "month"
   | "register"
   | "casts"
+  | "storeSettings"
   | "rooms"
   | "roomTimeline"
   | "audit"
@@ -34,6 +40,7 @@ const VALID_TABS: Tab[] = [
   "month",
   "register",
   "casts",
+  "storeSettings",
   "rooms",
   "roomTimeline",
   "audit",
@@ -74,6 +81,7 @@ function createTabUrl(tab: Tab): string {
 }
 
 function ShiftManagementApp() {
+  const { currentStoreId } = useStore();
   const [activeTab, setActiveTab] = useState<Tab>(
     getTabFromUrl
   );
@@ -175,6 +183,7 @@ function ShiftManagementApp() {
   const showBottomNavigation = isNavigationTab(activeTab);
   const showFloatingRegisterButton =
     activeTab !== "register" &&
+    activeTab !== "storeSettings" &&
     activeTab !== "rooms" &&
     activeTab !== "roomTimeline" &&
     activeTab !== "audit" &&
@@ -193,10 +202,17 @@ function ShiftManagementApp() {
   return (
     <main className="min-h-screen bg-gray-50">
       <div
+        key={currentStoreId}
         className={`mx-auto w-full max-w-md px-4 pt-5 ${
           showBottomNavigation ? "pb-28" : "pb-8"
         }`}
       >
+        <StoreSwitcher
+          onOpenSettings={() =>
+            openTab("storeSettings")
+          }
+        />
+
         {activeTab === "home" && (
           <>
             <DashboardScreen
@@ -247,6 +263,11 @@ function ShiftManagementApp() {
         )}
         {activeTab === "register" && <RegisterScreen />}
         {activeTab === "casts" && <CastScreen />}
+        {activeTab === "storeSettings" && (
+          <StoreSettingsScreen
+            onBack={() => openTab("home")}
+          />
+        )}
         {activeTab === "audit" && isAdmin && (
           <AuditLogScreen onBack={() => openTab("home")} />
         )}
@@ -276,6 +297,7 @@ function ShiftManagementApp() {
       {!showBottomNavigation &&
         activeTab !== "rooms" &&
         activeTab !== "roomTimeline" &&
+        activeTab !== "storeSettings" &&
         activeTab !== "audit" &&
         activeTab !== "adminUsers" && (
           <button
@@ -293,7 +315,9 @@ function ShiftManagementApp() {
 export default function HomePage() {
   return (
     <AuthGate>
-      <ShiftManagementApp />
+      <StoreProvider>
+        <ShiftManagementApp />
+      </StoreProvider>
     </AuthGate>
   );
 }

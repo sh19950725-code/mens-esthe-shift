@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/supabase";
+import { requireActiveStoreId } from "@/services/store.service";
 import {
   formatExtendedTime,
   getExtendedEndMinutes,
@@ -226,9 +227,11 @@ function doTimeRangesOverlap(
 export async function getShiftsByDate(
   workDate: string
 ): Promise<Shift[]> {
+  const storeId = requireActiveStoreId();
   const { data, error } = await supabase
     .from("shifts")
     .select(SHIFT_SELECT)
+    .eq("store_id", storeId)
     .eq("work_date", workDate)
     .order("start_time", { ascending: true });
 
@@ -243,9 +246,11 @@ export async function getShiftsByDateRange(
   startDate: string,
   endDate: string
 ): Promise<Shift[]> {
+  const storeId = requireActiveStoreId();
   const { data, error } = await supabase
     .from("shifts")
     .select(SHIFT_SELECT)
+    .eq("store_id", storeId)
     .gte("work_date", startDate)
     .lte("work_date", endDate)
     .order("work_date", { ascending: true })
@@ -261,9 +266,11 @@ export async function getShiftsByDateRange(
 export async function getShiftsByCastId(
   castId: string
 ): Promise<Shift[]> {
+  const storeId = requireActiveStoreId();
   const { data, error } = await supabase
     .from("shifts")
     .select(SHIFT_SELECT)
+    .eq("store_id", storeId)
     .eq("cast_id", castId)
     .order("work_date", { ascending: false })
     .order("start_time", { ascending: true });
@@ -283,6 +290,7 @@ export async function checkShiftConflict(
   endTime: string,
   excludeShiftId?: string
 ): Promise<ConflictResult> {
+  const storeId = requireActiveStoreId();
   const { data, error } = await supabase
     .from("shifts")
     .select(
@@ -301,6 +309,7 @@ export async function checkShiftConflict(
         )
       `
     )
+    .eq("store_id", storeId)
     .eq("work_date", workDate)
     .neq("status", "holiday");
 
@@ -390,9 +399,11 @@ export async function checkShiftConflict(
 export async function createShift(
   input: CreateShiftInput
 ): Promise<Shift> {
+  const storeId = requireActiveStoreId();
   const { data, error } = await supabase
     .from("shifts")
     .insert({
+      store_id: storeId,
       cast_id: input.cast_id,
       room_id:
         input.status === "holiday"
@@ -417,6 +428,7 @@ export async function createShift(
 export async function createShiftsBulk(
   input: BulkCreateShiftInput
 ): Promise<BulkCreateResult> {
+  const storeId = requireActiveStoreId();
   if (input.start_date > input.end_date) {
     throw new Error(
       "終了日は開始日以降に設定してください"
@@ -477,7 +489,12 @@ export async function createShiftsBulk(
 
   const { error } = await supabase
     .from("shifts")
-    .insert(shiftsToInsert);
+    .insert(
+      shiftsToInsert.map((shift) => ({
+        ...shift,
+        store_id: storeId,
+      }))
+    );
 
   if (error) {
     throw error;
@@ -493,6 +510,7 @@ export async function updateShiftById(
   id: string,
   input: UpdateShiftInput
 ): Promise<void> {
+  const storeId = requireActiveStoreId();
   const updateData = {
     ...input,
     room_id:
@@ -504,6 +522,7 @@ export async function updateShiftById(
   const { error } = await supabase
     .from("shifts")
     .update(updateData)
+    .eq("store_id", storeId)
     .eq("id", id);
 
   if (error) {
@@ -514,9 +533,11 @@ export async function updateShiftById(
 export async function deleteShiftById(
   id: string
 ): Promise<void> {
+  const storeId = requireActiveStoreId();
   const { error } = await supabase
     .from("shifts")
     .delete()
+    .eq("store_id", storeId)
     .eq("id", id);
 
   if (error) {

@@ -1,4 +1,5 @@
 import { supabase } from "@/lib/supabase";
+import { requireActiveStoreId } from "@/services/store.service";
 import {
   getBusinessDate,
   getExtendedEndMinutes,
@@ -204,6 +205,7 @@ const SHIFT_SELECT = `
 `;
 
 export async function getDashboardSummary(): Promise<DashboardSummary> {
+  const storeId = requireActiveStoreId();
   const now = new Date();
   const businessHours = await getBusinessHours();
   const today = getBusinessDate(now, businessHours);
@@ -225,6 +227,7 @@ export async function getDashboardSummary(): Promise<DashboardSummary> {
     supabase
       .from("shifts")
       .select(SHIFT_SELECT)
+      .eq("store_id", storeId)
       .eq("work_date", today)
       .order("start_time", {
         ascending: true,
@@ -236,6 +239,7 @@ export async function getDashboardSummary(): Promise<DashboardSummary> {
         count: "exact",
         head: true,
       })
+      .eq("store_id", storeId)
       .eq("status", "active"),
 
     supabase
@@ -244,6 +248,7 @@ export async function getDashboardSummary(): Promise<DashboardSummary> {
         count: "exact",
         head: true,
       })
+      .eq("store_id", storeId)
       .eq("status", "active"),
 
     supabase
@@ -252,6 +257,7 @@ export async function getDashboardSummary(): Promise<DashboardSummary> {
         count: "exact",
         head: true,
       })
+      .eq("store_id", storeId)
       .gte("work_date", weekStart)
       .lte("work_date", weekEnd)
       .neq("status", "holiday"),
@@ -259,6 +265,7 @@ export async function getDashboardSummary(): Promise<DashboardSummary> {
     supabase
       .from("shifts")
       .select(SHIFT_SELECT)
+      .eq("store_id", storeId)
       .order("created_at", {
         ascending: false,
       })
