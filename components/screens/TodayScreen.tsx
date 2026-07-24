@@ -1,10 +1,21 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
 import ShiftCard from "@/components/cards/ShiftCard";
+import ShiftTimetable from "@/components/shifts/ShiftTimetable";
 import EditShiftModal from "@/components/ui/EditShiftModal";
-import { formatExtendedTime } from "@/lib/business-time";
+import {
+  DEFAULT_BUSINESS_HOURS,
+  formatExtendedTime,
+  type BusinessHours,
+} from "@/lib/business-time";
 import { getShiftStatus } from "@/lib/time";
+import { getBusinessHours } from "@/services/store-settings.service";
 import {
   deleteShiftById,
   getShiftsByDate,
@@ -17,6 +28,7 @@ type ShiftFilter =
   | "tentative"
   | "holiday"
   | "now";
+type ViewMode = "list" | "timetable";
 
 function getLocalToday(): string {
   const today = new Date();
@@ -92,28 +104,37 @@ export default function TodayScreen({
   const [isLoading, setIsLoading] = useState(true);
   const [searchText, setSearchText] = useState("");
   const [filter, setFilter] = useState<ShiftFilter>("all");
+  const [viewMode, setViewMode] =
+    useState<ViewMode>("timetable");
+  const [businessHours, setBusinessHours] =
+    useState<BusinessHours>(DEFAULT_BUSINESS_HOURS);
 
-  useEffect(() => {
-    void loadShifts();
-  }, [workDate]);
-
-  useEffect(() => {
-    if (initialDate) {
-      setWorkDate(initialDate);
-    }
-  }, [initialDate]);
-
-  async function loadShifts() {
+  const loadShifts = useCallback(async () => {
     try {
       setIsLoading(true);
-      setShifts(await getShiftsByDate(workDate));
+      const [shiftData, hours] = await Promise.all([
+        getShiftsByDate(workDate),
+        getBusinessHours(),
+      ]);
+      setShifts(shiftData);
+      setBusinessHours(hours);
     } catch (error) {
       console.error("シフト取得エラー:", error);
       alert("シフトの取得に失敗しました");
     } finally {
       setIsLoading(false);
     }
-  }
+  }, [workDate]);
+
+  useEffect(() => {
+    void loadShifts();
+  }, [loadShifts]);
+
+  useEffect(() => {
+    if (initialDate) {
+      setWorkDate(initialDate);
+    }
+  }, [initialDate]);
 
   async function deleteShift(id: string) {
     if (!window.confirm("このシフトを削除しますか？")) {
@@ -349,56 +370,89 @@ export default function TodayScreen({
         )}
       </div>
 
-      <section className="space-y-3">
-        {filteredShifts.map((shift) => {
-          const type = getShiftType(shift);
-          const workingNow = isWorkingNow(shift);
-          const status =
-            workingNow ? "working" : type;
-          const statusLabel = workingNow
-            ? "現在出勤中"
-            : type === "tentative"
-              ? "仮シフト"
-              : type === "holiday"
-                ? "休み"
-                : "通常出勤";
+      <div className="mb-4 grid grid-cols-2 rounded-xl bg-gray-100 p-1">
+        <button
+          type="button"
+          onClick={() => setViewMode("timetable")}
+          className={`rounded-lg px-3 py-2.5 text-sm font-bold ${
+            viewMode === "timetable"
+              ? "bg-white text-gray-900 shadow-sm"
+              : "text-gray-600"
+          }`}
+        >
+          タイムテーブル
+        </button>
+        <button
+          type="button"
+          onClick={() => setViewMode("list")}
+          className={`rounded-lg px-3 py-2.5 text-sm font-bold ${
+            viewMode === "list"
+              ? "bg-white text-gray-900 shadow-sm"
+              : "text-gray-600"
+          }`}
+        >
+          一覧
+        </button>
+      </div>
 
-          return (
-            <ShiftCard
-              key={shift.id}
-              name={getCastName(shift)}
-              room={
-                type === "holiday"
-                  ? null
-                  : shift.rooms?.name || null
-              }
-              time={formatExtendedTime(
-                shift.start_time,
-                shift.end_time
-              )}
-              status={status}
-              statusLabel={statusLabel}
-              memo={shift.memo}
-              onEdit={
-                canEdit
-                  ? () => setEditingShift(shift)
-                  : undefined
-              }
-              onDelete={
-                canEdit
-                  ? () => void deleteShift(shift.id)
-                  : undefined
-              }
-            />
-          );
-        })}
+      {viewMode === "timetable" ? (
+        <ShiftTimetable
+          shifts={filteredShifts}
+          businessHours={businessHours}
+          canEdit={canEdit}
+          onSelectShift={setEditingShift}
+        />
+      ) : (
+        <section className="space-y-3">
+          {filteredShifts.map((shift) => {
+            const type = getShiftType(shift);
+            const workingNow = isWorkingNow(shift);
+            const status = workingNow ? "working" : type;
+            const statusLabel = workingNow
+              ? "現在出勤中"
+              : type === "tentative"
+                ? "仮シフト"
+                : type === "holiday"
+                  ? "休み"
+                  : "通常出勤";
 
-        {filteredShifts.length === 0 && (
-          <p className="rounded-xl bg-gray-50 p-5 text-center text-sm text-gray-500">
-            条件に一致するシフトはありません。
-          </p>
-        )}
-      </section>
+            return (
+              <ShiftCard
+                key={shift.id}
+                name={getCastName(shift)}
+                room={
+                  type === "holiday"
+                    ? null
+                    : shift.rooms?.name || null
+                }
+                time={formatExtendedTime(
+                  shift.start_time,
+                  shift.end_time
+                )}
+                status={status}
+                statusLabel={statusLabel}
+                memo={shift.memo}
+                onEdit={
+                  canEdit
+                    ? () => setEditingShift(shift)
+                    : undefined
+                }
+                onDelete={
+                  canEdit
+                    ? () => void deleteShift(shift.id)
+                    : undefined
+                }
+              />
+            );
+          })}
+
+          {filteredShifts.length === 0 && (
+            <p className="rounded-xl bg-gray-50 p-5 text-center text-sm text-gray-500">
+              条件に一致するシフトはありません。
+            </p>
+          )}
+        </section>
+      )}
 
       {canEdit && editingShift && (
         <EditShiftModal
