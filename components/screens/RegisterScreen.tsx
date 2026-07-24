@@ -547,26 +547,13 @@ export default function RegisterScreen() {
             <Input
               value={workDate}
               onChange={(event) =>
-                setWorkDate(normalizeDirectInput(event.target.value))
-              }
-              type="text"
-              inputMode="numeric"
-              placeholder="例：2026-07-24"
-              autoComplete="off"
-            />
-            <Input
-              value={
-                isValidDateInput(workDate) ? workDate : ""
-              }
-              onChange={(event) =>
                 setWorkDate(event.target.value)
               }
               type="date"
               aria-label="カレンダーから日付を選択"
-              className="mt-2 bg-gray-50"
             />
             <p className="mt-1 text-xs text-gray-500">
-              直接入力はYYYY-MM-DD形式
+              直接入力または右端のカレンダーから選択できます
             </p>
           </Field>
         ) : (
@@ -576,30 +563,7 @@ export default function RegisterScreen() {
                 <Input
                   value={startDate}
                   onChange={(event) => {
-                    const nextStartDate = normalizeDirectInput(
-                      event.target.value
-                    );
-                    setStartDate(nextStartDate);
-                    if (isValidDateInput(nextStartDate)) {
-                      setEndDate(
-                        getOneWeekLaterDate(nextStartDate)
-                      );
-                    }
-                  }}
-                  type="text"
-                  inputMode="numeric"
-                  placeholder="YYYY-MM-DD"
-                  autoComplete="off"
-                />
-                <Input
-                  value={
-                    isValidDateInput(startDate)
-                      ? startDate
-                      : ""
-                  }
-                  onChange={(event) => {
-                    const nextStartDate =
-                      event.target.value;
+                    const nextStartDate = event.target.value;
                     setStartDate(nextStartDate);
                     if (nextStartDate) {
                       setEndDate(
@@ -609,32 +573,16 @@ export default function RegisterScreen() {
                   }}
                   type="date"
                   aria-label="カレンダーから開始日を選択"
-                  className="mt-2 bg-gray-50"
                 />
               </Field>
               <Field label="終了日">
                 <Input
                   value={endDate}
                   onChange={(event) =>
-                    setEndDate(
-                      normalizeDirectInput(event.target.value)
-                    )
-                  }
-                  type="text"
-                  inputMode="numeric"
-                  placeholder="YYYY-MM-DD"
-                  autoComplete="off"
-                />
-                <Input
-                  value={
-                    isValidDateInput(endDate) ? endDate : ""
-                  }
-                  onChange={(event) =>
                     setEndDate(event.target.value)
                   }
                   type="date"
                   aria-label="カレンダーから終了日を選択"
-                  className="mt-2 bg-gray-50"
                 />
               </Field>
             </div>
@@ -659,78 +607,22 @@ export default function RegisterScreen() {
 
         <div className="grid grid-cols-2 gap-3">
           <Field label="出勤時間">
-            <Input
+            <ExtendedTimeInput
               value={startTime}
-              onChange={(event) =>
-                setStartTime(event.target.value)
-              }
-              onBlur={() =>
-                setStartTime((current) =>
-                  normalizeTimeInput(current)
-                )
-              }
-              type="text"
-              inputMode="numeric"
+              onChange={setStartTime}
               placeholder="例：16:00"
-              autoComplete="off"
+              listId="shift-start-time-options"
+              ariaLabel="出勤時間"
             />
-            <Select
-              value={
-                TIME_OPTIONS.includes(startTime)
-                  ? startTime
-                  : ""
-              }
-              onChange={(event) =>
-                setStartTime(event.target.value)
-              }
-              aria-label="出勤時間をプルダウンから選択"
-              className="mt-2 bg-gray-50"
-            >
-              <option value="">
-                プルダウンから選択
-              </option>
-              {TIME_OPTIONS.map((time) => (
-                <option key={time} value={time}>
-                  {time}
-                </option>
-              ))}
-            </Select>
           </Field>
           <Field label="退勤時間">
-            <Input
+            <ExtendedTimeInput
               value={endTime}
-              onChange={(event) =>
-                setEndTime(event.target.value)
-              }
-              onBlur={() =>
-                setEndTime((current) =>
-                  normalizeTimeInput(current)
-                )
-              }
-              type="text"
-              inputMode="numeric"
+              onChange={setEndTime}
               placeholder="例：28:00"
-              autoComplete="off"
+              listId="shift-end-time-options"
+              ariaLabel="退勤時間"
             />
-            <Select
-              value={
-                TIME_OPTIONS.includes(endTime) ? endTime : ""
-              }
-              onChange={(event) =>
-                setEndTime(event.target.value)
-              }
-              aria-label="退勤時間をプルダウンから選択"
-              className="mt-2 bg-gray-50"
-            >
-              <option value="">
-                プルダウンから選択
-              </option>
-              {TIME_OPTIONS.map((time) => (
-                <option key={time} value={time}>
-                  {time}
-                </option>
-              ))}
-            </Select>
           </Field>
 
           {isValidTimeInput(startTime) &&
@@ -825,6 +717,45 @@ function Field({
       </label>
       {children}
     </div>
+  );
+}
+
+function ExtendedTimeInput({
+  value,
+  onChange,
+  placeholder,
+  listId,
+  ariaLabel,
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  placeholder: string;
+  listId: string;
+  ariaLabel: string;
+}) {
+  return (
+    <>
+      <input
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        onBlur={() => onChange(normalizeTimeInput(value))}
+        type="text"
+        inputMode="numeric"
+        list={listId}
+        placeholder={placeholder}
+        aria-label={ariaLabel}
+        autoComplete="off"
+        className="w-full rounded-xl border border-gray-300 bg-white p-4 text-sm text-gray-900 outline-none transition focus:border-black"
+      />
+      <datalist id={listId}>
+        {TIME_OPTIONS.map((time) => (
+          <option key={time} value={time} />
+        ))}
+      </datalist>
+      <p className="mt-1 text-xs text-gray-500">
+        直接入力または候補から選択できます
+      </p>
+    </>
   );
 }
 
