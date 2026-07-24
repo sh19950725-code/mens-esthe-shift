@@ -92,13 +92,35 @@ export default function ShiftTimetable({
   const activeShifts = shifts.filter(
     (shift) => getShiftType(shift) === "working"
   );
+  const shiftRanges = activeShifts
+    .map((shift) => ({
+      shift,
+      range: getTimelineMinutes(shift, businessHours),
+    }))
+    .sort(
+      (first, second) =>
+        first.range.start - second.range.start
+    );
+  const visibleRanges = shiftRanges.filter(
+    ({ range }) => range.end > range.start
+  );
+  const earliestStart =
+    visibleRanges.length > 0
+      ? Math.min(
+          ...visibleRanges.map(({ range }) => range.start)
+        )
+      : businessHours.openMinutes;
+  const timelineStartMinutes = Math.max(
+    businessHours.openMinutes,
+    Math.floor(earliestStart / 60) * 60
+  );
   const duration =
-    businessHours.closeMinutes - businessHours.openMinutes;
+    businessHours.closeMinutes - timelineStartMinutes;
   const timelineWidth = (duration / 60) * HOUR_WIDTH;
   const hourCount = Math.ceil(duration / 60);
   const hourLabels = Array.from(
     { length: hourCount + 1 },
-    (_, index) => businessHours.openMinutes + index * 60
+    (_, index) => timelineStartMinutes + index * 60
   );
 
   if (activeShifts.length === 0) {
@@ -119,7 +141,7 @@ export default function ShiftTimetable({
       <div className="border-b border-gray-200 bg-gray-50 px-4 py-3">
         <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-xs font-bold">
           <span className="text-gray-700">
-            営業時間 {formatMinutesAsTime(businessHours.openMinutes)}
+            表示開始 {formatMinutesAsTime(timelineStartMinutes)}
             〜{formatMinutesAsTime(businessHours.closeMinutes)}
           </span>
           <Legend color="bg-blue-500" label="通常出勤" />
@@ -163,17 +185,18 @@ export default function ShiftTimetable({
               </div>
             </div>
 
-            {activeShifts.map((shift) => {
-              const range = getTimelineMinutes(
-                shift,
-                businessHours
-              );
+            {shiftRanges.map(({ shift, range }) => {
               const isVisible = range.end > range.start;
+              const displayedStart = Math.max(
+                range.start,
+                timelineStartMinutes
+              );
               const left =
-                ((range.start - businessHours.openMinutes) / 60) *
+                ((displayedStart - timelineStartMinutes) / 60) *
                 HOUR_WIDTH;
               const width = Math.max(
-                ((range.end - range.start) / 60) * HOUR_WIDTH,
+                ((range.end - displayedStart) / 60) *
+                  HOUR_WIDTH,
                 34
               );
 
