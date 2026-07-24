@@ -13,7 +13,6 @@ import {
   checkShiftConflict,
   updateShiftById,
   type Shift,
-  type ShiftStatus,
 } from "@/services/shift.service";
 import {
   getActiveCasts,
@@ -40,9 +39,6 @@ export default function EditShiftModal({
   const [endTime, setEndTime] = useState(
     shift.end_time.slice(0, 5)
   );
-  const [status, setStatus] = useState<ShiftStatus>(
-    shift.status ?? "working"
-  );
   const [memo, setMemo] = useState(shift.memo || "");
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -66,7 +62,7 @@ export default function EditShiftModal({
 
         if (!isCancelled) {
           setErrorMessage(
-            "キャストまたは部屋情報の取得に失敗しました"
+            "キャスト情報の取得に失敗しました"
           );
         }
       } finally {
@@ -139,31 +135,27 @@ export default function EditShiftModal({
     try {
       setIsSaving(true);
 
-      const normalizedRoomId = null;
+      const conflict = await checkShiftConflict(
+        castId,
+        null,
+        workDate,
+        startTime,
+        endTime,
+        shift.id
+      );
 
-      if (status !== "holiday") {
-        const conflict = await checkShiftConflict(
-          castId,
-          normalizedRoomId,
-          workDate,
-          startTime,
-          endTime,
-          shift.id
-        );
-
-        if (!conflict.ok) {
-          setErrorMessage(conflict.message);
-          return;
-        }
+      if (!conflict.ok) {
+        setErrorMessage(conflict.message);
+        return;
       }
 
       await updateShiftById(shift.id, {
         cast_id: castId,
         work_date: workDate,
-        room_id: normalizedRoomId,
+        room_id: null,
         start_time: startTime,
         end_time: endTime,
-        status,
+        status: "working",
         memo: memo.trim() || null,
       });
 
@@ -282,32 +274,6 @@ export default function EditShiftModal({
                 disabled={isSaving}
               />
             </div>
-
-            <div>
-              <label className="mb-1 block text-sm font-bold text-gray-700">
-                ステータス
-              </label>
-
-              <Select
-                value={status}
-                onChange={(event) => {
-                  const nextStatus =
-                    event.target.value as ShiftStatus;
-
-                  setStatus(nextStatus);
-
-                  if (nextStatus === "holiday") {
-                  }
-                }}
-                disabled={isSaving}
-              >
-                <option value="working">通常出勤</option>
-                <option value="tentative">仮シフト</option>
-                <option value="holiday">休み</option>
-              </Select>
-            </div>
-
-
 
             <div className="grid grid-cols-2 gap-3">
               <div>

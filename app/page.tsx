@@ -28,8 +28,6 @@ type Tab =
   | "register"
   | "casts"
   | "storeSettings"
-  | "rooms"
-  | "roomTimeline"
   | "audit"
   | "adminUsers";
 
@@ -41,8 +39,6 @@ const VALID_TABS: Tab[] = [
   "register",
   "casts",
   "storeSettings",
-  "rooms",
-  "roomTimeline",
   "audit",
   "adminUsers",
 ];
@@ -207,8 +203,6 @@ function ShiftManagementApp() {
     canEdit &&
     activeTab !== "register" &&
     activeTab !== "storeSettings" &&
-    activeTab !== "rooms" &&
-    activeTab !== "roomTimeline" &&
     activeTab !== "audit" &&
     activeTab !== "adminUsers";
 
@@ -337,8 +331,6 @@ function ShiftManagementApp() {
 
       {!showBottomNavigation &&
         activeTab !== "register" &&
-        activeTab !== "rooms" &&
-        activeTab !== "roomTimeline" &&
         activeTab !== "storeSettings" &&
         activeTab !== "audit" &&
         activeTab !== "adminUsers" && (

@@ -112,7 +112,6 @@ export default function RegisterScreen() {
   const [mode, setMode] = useState<RegisterMode>("single");
   const [casts, setCasts] = useState<Cast[]>([]);
   const [castId, setCastId] = useState("");
-  const [roomId, setRoomId] = useState("");
   const [workDate, setWorkDate] = useState(getTodayDate());
   const [startDate, setStartDate] = useState(getTodayDate());
   const [endDate, setEndDate] = useState(
@@ -142,7 +141,6 @@ export default function RegisterScreen() {
         const draft = JSON.parse(savedDraft) as {
           mode?: RegisterMode;
           castId?: string;
-          roomId?: string;
           workDate?: string;
           startDate?: string;
           endDate?: string;
@@ -156,9 +154,6 @@ export default function RegisterScreen() {
         }
         if (typeof draft.castId === "string") {
           setCastId(draft.castId);
-        }
-        if (typeof draft.roomId === "string") {
-          setRoomId(draft.roomId);
         }
         if (typeof draft.workDate === "string") {
           setWorkDate(draft.workDate);
@@ -205,7 +200,7 @@ export default function RegisterScreen() {
       setCasts(castData);
     } catch (error) {
       console.error("登録画面データ取得エラー:", error);
-      alert("キャストまたは部屋情報の取得に失敗しました");
+      alert("キャスト情報の取得に失敗しました");
     } finally {
       setIsLoading(false);
     }
@@ -214,7 +209,6 @@ export default function RegisterScreen() {
   function resetCommonFields() {
     if (!keepSelection) {
       setCastId("");
-      setRoomId("");
     }
     setStartTime("");
     setEndTime("");
@@ -289,8 +283,7 @@ export default function RegisterScreen() {
 
       await createShift({
         cast_id: castId,
-        room_id:
-          null,
+        room_id: null,
         work_date: workDate,
         start_time: storedStartTime,
         end_time: storedEndTime,
@@ -333,8 +326,7 @@ export default function RegisterScreen() {
       const storedEndTime = normalizeTimeForStorage(endTime);
       const result = await createShiftsBulk({
         cast_id: castId,
-        room_id:
-          null,
+        room_id: null,
         start_date: startDate,
         end_date: endDate,
         start_time: storedStartTime,
@@ -388,15 +380,13 @@ export default function RegisterScreen() {
 
   const hasUnsavedChanges = useMemo(() => {
     return (
-      (!keepSelection &&
-        (Boolean(castId) || Boolean(roomId))) ||
+      (!keepSelection && Boolean(castId)) ||
       Boolean(startTime) ||
       Boolean(endTime) ||
       Boolean(memo.trim())
     );
   }, [
     castId,
-    roomId,
     startTime,
     endTime,
     memo,
@@ -435,7 +425,6 @@ export default function RegisterScreen() {
         JSON.stringify({
           mode,
           castId,
-          roomId,
           workDate,
           startDate,
           endDate,
@@ -452,7 +441,6 @@ export default function RegisterScreen() {
     hasUnsavedChanges,
     mode,
     castId,
-    roomId,
     workDate,
     startDate,
     endDate,
