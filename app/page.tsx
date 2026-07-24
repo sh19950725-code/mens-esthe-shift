@@ -230,6 +230,18 @@ function ShiftManagementApp() {
           }
         />
 
+        {(activeTab === "month" ||
+          activeTab === "register") && (
+          <button
+            type="button"
+            onClick={() => openTab("home")}
+            className="mb-4 inline-flex items-center gap-2 rounded-xl border border-gray-300 bg-white px-4 py-2.5 text-sm font-bold text-gray-700 shadow-sm"
+          >
+            <span aria-hidden="true">←</span>
+            ホームに戻る
+          </button>
+        )}
+
         {activeTab === "home" && (
           <>
             <DashboardScreen
@@ -284,16 +296,7 @@ function ShiftManagementApp() {
           />
         )}
         {activeTab === "register" && canEdit && (
-          <>
-            <RegisterScreen />
-            <button
-              type="button"
-              onClick={() => openTab("home")}
-              className="mt-4 w-full rounded-2xl border border-gray-300 bg-white px-4 py-3 text-sm font-bold text-gray-700 shadow-sm"
-            >
-              ホームに戻る
-            </button>
-          </>
+          <RegisterScreen />
         )}
         {activeTab === "casts" && (
           <CastScreen canEdit={canEdit} />
@@ -329,19 +332,6 @@ function ShiftManagementApp() {
         />
       )}
 
-      {!showBottomNavigation &&
-        activeTab !== "register" &&
-        activeTab !== "storeSettings" &&
-        activeTab !== "audit" &&
-        activeTab !== "adminUsers" && (
-          <button
-            type="button"
-            onClick={() => openTab("home")}
-            className="fixed bottom-5 left-1/2 z-30 -translate-x-1/2 rounded-full border border-gray-200 bg-white px-5 py-3 text-sm font-bold text-gray-700 shadow-lg"
-          >
-            ホームに戻る
-          </button>
-        )}
     </main>
   );
 }
