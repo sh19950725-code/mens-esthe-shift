@@ -260,12 +260,13 @@ export async function getDashboardSummary(): Promise<DashboardSummary> {
       .eq("store_id", storeId)
       .gte("work_date", weekStart)
       .lte("work_date", weekEnd)
-      .neq("status", "holiday"),
+      .or("status.eq.working,status.is.null"),
 
     supabase
       .from("shifts")
       .select(SHIFT_SELECT)
       .eq("store_id", storeId)
+      .or("status.eq.working,status.is.null")
       .order("created_at", {
         ascending: false,
       })
@@ -315,6 +316,7 @@ export async function getDashboardSummary(): Promise<DashboardSummary> {
 
   const workingNowShifts = todayShifts.filter(
     (shift) =>
+      (shift.status ?? "working") === "working" &&
       isShiftActiveNow(
         shift,
         now,

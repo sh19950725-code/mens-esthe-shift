@@ -14,7 +14,6 @@ import {
   checkShiftConflict,
   createShift,
   createShiftsBulk,
-  type ShiftStatus,
 } from "@/services/shift.service";
 
 type RegisterMode = "single" | "bulk";
@@ -23,6 +22,17 @@ const KEEP_SELECTION_KEY =
 const DRAFT_KEY = "shift-register-draft-v1";
 
 const ALL_WEEKDAYS = [0, 1, 2, 3, 4, 5, 6];
+const TIME_OPTIONS = Array.from(
+  { length: 43 },
+  (_, index) => {
+    const totalMinutes = 9 * 60 + index * 30;
+    const hour = Math.floor(totalMinutes / 60);
+    const minute = totalMinutes % 60;
+    return `${String(hour).padStart(2, "0")}:${String(
+      minute
+    ).padStart(2, "0")}`;
+  }
+);
 
 function formatLocalDate(date: Date): string {
   const year = date.getFullYear();
@@ -110,8 +120,6 @@ export default function RegisterScreen() {
   );
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
-  const [status, setStatus] =
-    useState<ShiftStatus>("working");
   const [memo, setMemo] = useState("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -140,7 +148,6 @@ export default function RegisterScreen() {
           endDate?: string;
           startTime?: string;
           endTime?: string;
-          status?: ShiftStatus;
           memo?: string;
         };
 
@@ -167,13 +174,6 @@ export default function RegisterScreen() {
         }
         if (typeof draft.endTime === "string") {
           setEndTime(draft.endTime);
-        }
-        if (
-          draft.status === "working" ||
-          draft.status === "tentative" ||
-          draft.status === "holiday"
-        ) {
-          setStatus(draft.status);
         }
         if (typeof draft.memo === "string") {
           setMemo(draft.memo);
@@ -218,7 +218,6 @@ export default function RegisterScreen() {
     }
     setStartTime("");
     setEndTime("");
-    setStatus("working");
     setMemo("");
   }
 
@@ -276,18 +275,16 @@ export default function RegisterScreen() {
         normalizeTimeForStorage(startTime);
       const storedEndTime = normalizeTimeForStorage(endTime);
 
-      if (status !== "holiday") {
-        const result = await checkShiftConflict(
-          castId,
-          null,
-          workDate,
-          storedStartTime,
-          storedEndTime
-        );
-        if (!result.ok) {
-          alert(result.message);
-          return;
-        }
+      const result = await checkShiftConflict(
+        castId,
+        null,
+        workDate,
+        storedStartTime,
+        storedEndTime
+      );
+      if (!result.ok) {
+        alert(result.message);
+        return;
       }
 
       await createShift({
@@ -297,7 +294,7 @@ export default function RegisterScreen() {
         work_date: workDate,
         start_time: storedStartTime,
         end_time: storedEndTime,
-        status,
+        status: "working",
         memo: memo.trim() || null,
       });
 
@@ -342,7 +339,7 @@ export default function RegisterScreen() {
         end_date: endDate,
         start_time: storedStartTime,
         end_time: storedEndTime,
-        status,
+        status: "working",
         memo: memo.trim() || null,
         weekdays: ALL_WEEKDAYS,
       });
@@ -393,7 +390,6 @@ export default function RegisterScreen() {
     return (
       (!keepSelection &&
         (Boolean(castId) || Boolean(roomId))) ||
-      status !== "working" ||
       Boolean(startTime) ||
       Boolean(endTime) ||
       Boolean(memo.trim())
@@ -401,7 +397,6 @@ export default function RegisterScreen() {
   }, [
     castId,
     roomId,
-    status,
     startTime,
     endTime,
     memo,
@@ -446,7 +441,6 @@ export default function RegisterScreen() {
           endDate,
           startTime,
           endTime,
-          status,
           memo,
         })
       );
@@ -464,7 +458,6 @@ export default function RegisterScreen() {
     endDate,
     startTime,
     endTime,
-    status,
     memo,
   ]);
 
@@ -500,7 +493,7 @@ export default function RegisterScreen() {
         <p className="text-sm text-gray-500">シフト追加</p>
         <h1 className="text-2xl font-bold">シフト登録</h1>
         <p className="mt-1 text-sm text-gray-500">
-          日付と時間を直接入力して登録できます
+          直接入力またはカレンダー・プルダウンから選択できます
         </p>
       </header>
 
@@ -573,8 +566,19 @@ export default function RegisterScreen() {
               placeholder="例：2026-07-24"
               autoComplete="off"
             />
+            <Input
+              value={
+                isValidDateInput(workDate) ? workDate : ""
+              }
+              onChange={(event) =>
+                setWorkDate(event.target.value)
+              }
+              type="date"
+              aria-label="カレンダーから日付を選択"
+              className="mt-2 bg-gray-50"
+            />
             <p className="mt-1 text-xs text-gray-500">
-              YYYY-MM-DD形式で入力
+              直接入力はYYYY-MM-DD形式
             </p>
           </Field>
         ) : (
@@ -599,6 +603,26 @@ export default function RegisterScreen() {
                   placeholder="YYYY-MM-DD"
                   autoComplete="off"
                 />
+                <Input
+                  value={
+                    isValidDateInput(startDate)
+                      ? startDate
+                      : ""
+                  }
+                  onChange={(event) => {
+                    const nextStartDate =
+                      event.target.value;
+                    setStartDate(nextStartDate);
+                    if (nextStartDate) {
+                      setEndDate(
+                        getOneWeekLaterDate(nextStartDate)
+                      );
+                    }
+                  }}
+                  type="date"
+                  aria-label="カレンダーから開始日を選択"
+                  className="mt-2 bg-gray-50"
+                />
               </Field>
               <Field label="終了日">
                 <Input
@@ -612,6 +636,17 @@ export default function RegisterScreen() {
                   inputMode="numeric"
                   placeholder="YYYY-MM-DD"
                   autoComplete="off"
+                />
+                <Input
+                  value={
+                    isValidDateInput(endDate) ? endDate : ""
+                  }
+                  onChange={(event) =>
+                    setEndDate(event.target.value)
+                  }
+                  type="date"
+                  aria-label="カレンダーから終了日を選択"
+                  className="mt-2 bg-gray-50"
                 />
               </Field>
             </div>
@@ -634,21 +669,6 @@ export default function RegisterScreen() {
           </Select>
         </Field>
 
-        <Field label="ステータス">
-          <Select
-            value={status}
-            onChange={(event) => {
-              const nextStatus =
-                event.target.value as ShiftStatus;
-              setStatus(nextStatus);
-              if (nextStatus === "holiday") setRoomId("");
-            }}
-          >
-            <option value="working">通常出勤</option>
-            <option value="tentative">仮シフト</option>
-            <option value="holiday">休み</option>
-          </Select>
-        </Field>
         <div className="grid grid-cols-2 gap-3">
           <Field label="出勤時間">
             <Input
@@ -666,6 +686,27 @@ export default function RegisterScreen() {
               placeholder="例：16:00"
               autoComplete="off"
             />
+            <Select
+              value={
+                TIME_OPTIONS.includes(startTime)
+                  ? startTime
+                  : ""
+              }
+              onChange={(event) =>
+                setStartTime(event.target.value)
+              }
+              aria-label="出勤時間をプルダウンから選択"
+              className="mt-2 bg-gray-50"
+            >
+              <option value="">
+                プルダウンから選択
+              </option>
+              {TIME_OPTIONS.map((time) => (
+                <option key={time} value={time}>
+                  {time}
+                </option>
+              ))}
+            </Select>
           </Field>
           <Field label="退勤時間">
             <Input
@@ -683,6 +724,25 @@ export default function RegisterScreen() {
               placeholder="例：28:00"
               autoComplete="off"
             />
+            <Select
+              value={
+                TIME_OPTIONS.includes(endTime) ? endTime : ""
+              }
+              onChange={(event) =>
+                setEndTime(event.target.value)
+              }
+              aria-label="退勤時間をプルダウンから選択"
+              className="mt-2 bg-gray-50"
+            >
+              <option value="">
+                プルダウンから選択
+              </option>
+              {TIME_OPTIONS.map((time) => (
+                <option key={time} value={time}>
+                  {time}
+                </option>
+              ))}
+            </Select>
           </Field>
 
           {isValidTimeInput(startTime) &&

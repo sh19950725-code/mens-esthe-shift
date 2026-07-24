@@ -1,4 +1,5 @@
 "use client";
+/* eslint-disable react-hooks/exhaustive-deps */
 
 import { useEffect, useMemo, useState } from "react";
 import EditShiftModal from "@/components/ui/EditShiftModal";
@@ -10,7 +11,7 @@ import {
   type ShiftStatus,
 } from "@/services/shift.service";
 
-type StatusFilter = "all" | ShiftStatus;
+type StatusFilter = "all" | "working";
 
 const WEEKDAYS = ["日", "月", "火", "水", "木", "金", "土"];
 
@@ -60,18 +61,12 @@ function getCastName(shift: Shift): string {
 }
 
 function getStatusLabel(status: ShiftStatus): string {
-  if (status === "tentative") return "仮シフト";
-  if (status === "holiday") return "休み";
+  void status;
   return "通常出勤";
 }
 
 function getStatusClasses(status: ShiftStatus): string {
-  if (status === "tentative") {
-    return "border-yellow-200 bg-yellow-50";
-  }
-  if (status === "holiday") {
-    return "border-gray-200 bg-gray-50";
-  }
+  void status;
   return "border-blue-100 bg-blue-50";
 }
 
@@ -152,6 +147,7 @@ export default function WeekScreen({
   const filteredShifts = useMemo(() => {
     const keyword = searchText.trim().toLocaleLowerCase();
     return shifts.filter((shift) => {
+      if (getStatus(shift) !== "working") return false;
       const matchesStatus =
         statusFilter === "all" ||
         getStatus(shift) === statusFilter;
@@ -174,15 +170,9 @@ export default function WeekScreen({
       working: shifts.filter(
         (shift) => getStatus(shift) === "working"
       ).length,
-      tentative: shifts.filter(
-        (shift) => getStatus(shift) === "tentative"
-      ).length,
-      holiday: shifts.filter(
-        (shift) => getStatus(shift) === "holiday"
-      ).length,
       casts: new Set(
         shifts
-          .filter((shift) => getStatus(shift) !== "holiday")
+          .filter((shift) => getStatus(shift) === "working")
           .map((shift) => shift.cast_id)
       ).size,
     }),
@@ -238,8 +228,6 @@ export default function WeekScreen({
 
       <section className="mb-4 grid grid-cols-2 gap-2">
         <Summary label="通常出勤" value={summary.working} color="blue" />
-        <Summary label="仮シフト" value={summary.tentative} color="yellow" />
-        <Summary label="休み" value={summary.holiday} color="gray" />
         <Summary label="出勤キャスト" value={summary.casts} color="green" unit="名" />
       </section>
 
@@ -250,12 +238,10 @@ export default function WeekScreen({
           placeholder="キャスト名・部屋・メモで検索"
           className="w-full rounded-xl border border-gray-300 bg-gray-50 p-3 text-sm"
         />
-        <div className="mt-3 grid grid-cols-4 gap-2">
+        <div className="mt-3 grid grid-cols-2 gap-2">
           {[
             ["all", "すべて"],
             ["working", "通常"],
-            ["tentative", "仮"],
-            ["holiday", "休み"],
           ].map(([key, label]) => (
             <button
               key={key}

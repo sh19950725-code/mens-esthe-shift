@@ -126,10 +126,12 @@ export default function DashboardScreen({
     );
   }
 
-  const totalTodayCount =
-    summary.workingCount +
-    summary.tentativeCount +
-    summary.holidayCount;
+  const totalTodayCount = summary.workingCount;
+  const latestWorkingShifts = summary.latestShifts.filter(
+    (shift) =>
+      shift.status !== "tentative" &&
+      shift.status !== "holiday"
+  );
 
   return (
     <>
@@ -196,31 +198,13 @@ export default function DashboardScreen({
           </button>
         </div>
 
-        <div className="grid grid-cols-3 gap-2">
+        <div className="grid grid-cols-1 gap-2">
           <div className="rounded-2xl bg-blue-50 p-4">
             <p className="text-xs font-bold text-blue-700">
               通常出勤
             </p>
             <p className="mt-2 text-2xl font-bold text-blue-800">
               {summary.workingCount}
-              <span className="ml-1 text-sm">名</span>
-            </p>
-          </div>
-          <div className="rounded-2xl bg-yellow-50 p-4">
-            <p className="text-xs font-bold text-yellow-700">
-              仮シフト
-            </p>
-            <p className="mt-2 text-2xl font-bold text-yellow-800">
-              {summary.tentativeCount}
-              <span className="ml-1 text-sm">名</span>
-            </p>
-          </div>
-          <div className="rounded-2xl bg-gray-100 p-4">
-            <p className="text-xs font-bold text-gray-600">
-              休み
-            </p>
-            <p className="mt-2 text-2xl font-bold text-gray-700">
-              {summary.holidayCount}
               <span className="ml-1 text-sm">名</span>
             </p>
           </div>
@@ -291,7 +275,7 @@ export default function DashboardScreen({
         </div>
 
         <div className="space-y-2">
-          {summary.latestShifts.map((shift) => (
+          {latestWorkingShifts.map((shift) => (
             <div
               key={shift.id}
               className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm"
@@ -310,17 +294,13 @@ export default function DashboardScreen({
                   </p>
                 </div>
                 <span className="shrink-0 text-xs font-bold text-gray-500">
-                  {shift.status === "tentative"
-                    ? "仮シフト"
-                    : shift.status === "holiday"
-                      ? "休み"
-                      : "通常出勤"}
+                  通常出勤
                 </span>
               </div>
             </div>
           ))}
 
-          {summary.latestShifts.length === 0 && (
+          {latestWorkingShifts.length === 0 && (
             <p className="rounded-2xl bg-gray-50 p-5 text-center text-sm text-gray-500">
               登録されたシフトはありません
             </p>

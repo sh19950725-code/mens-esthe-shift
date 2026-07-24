@@ -1,4 +1,5 @@
 "use client";
+/* eslint-disable react-hooks/exhaustive-deps */
 
 import { useEffect, useMemo, useState } from "react";
 import { formatExtendedTime } from "@/lib/business-time";
@@ -61,27 +62,13 @@ function getCastName(shift: Shift): string {
 }
 
 function getStatusLabel(status: ShiftStatus): string {
-  switch (status) {
-    case "tentative":
-      return "仮シフト";
-    case "holiday":
-      return "休み";
-    case "working":
-    default:
-      return "通常出勤";
-  }
+  void status;
+  return "通常出勤";
 }
 
 function getStatusClasses(status: ShiftStatus): string {
-  switch (status) {
-    case "tentative":
-      return "bg-yellow-100 text-yellow-700";
-    case "holiday":
-      return "bg-gray-200 text-gray-600";
-    case "working":
-    default:
-      return "bg-blue-100 text-blue-700";
-  }
+  void status;
+  return "bg-blue-100 text-blue-700";
 }
 
 export default function MonthScreen({
@@ -160,6 +147,7 @@ export default function MonthScreen({
       const shiftDate = parseDate(shift.work_date);
 
       return (
+        getStatus(shift) === "working" &&
         shiftDate.getFullYear() === currentYear &&
         shiftDate.getMonth() === currentMonthNumber
       );
@@ -171,24 +159,12 @@ export default function MonthScreen({
       (shift) => getStatus(shift) === "working"
     ).length;
 
-    const tentativeCount = monthShifts.filter(
-      (shift) => getStatus(shift) === "tentative"
-    ).length;
-
-    const holidayCount = monthShifts.filter(
-      (shift) => getStatus(shift) === "holiday"
-    ).length;
-
     const uniqueCastCount = new Set(
-      monthShifts
-        .filter((shift) => getStatus(shift) !== "holiday")
-        .map((shift) => shift.cast_id)
+      monthShifts.map((shift) => shift.cast_id)
     ).size;
 
     return {
       workingCount,
-      tentativeCount,
-      holidayCount,
       uniqueCastCount,
     };
   }, [monthShifts]);
@@ -199,7 +175,11 @@ export default function MonthScreen({
     }
 
     return shifts
-      .filter((shift) => shift.work_date === selectedDate)
+      .filter(
+        (shift) =>
+          shift.work_date === selectedDate &&
+          getStatus(shift) === "working"
+      )
       .sort((a, b) => a.start_time.localeCompare(b.start_time));
   }, [shifts, selectedDate]);
 
@@ -258,22 +238,6 @@ export default function MonthScreen({
           </p>
           <p className="mt-1 text-xl font-bold text-blue-800">
             {monthSummary.workingCount}件
-          </p>
-        </div>
-
-        <div className="rounded-2xl bg-yellow-50 p-3">
-          <p className="text-xs font-bold text-yellow-700">
-            仮シフト
-          </p>
-          <p className="mt-1 text-xl font-bold text-yellow-800">
-            {monthSummary.tentativeCount}件
-          </p>
-        </div>
-
-        <div className="rounded-2xl bg-gray-100 p-3">
-          <p className="text-xs font-bold text-gray-600">休み</p>
-          <p className="mt-1 text-xl font-bold text-gray-700">
-            {monthSummary.holidayCount}件
           </p>
         </div>
 
@@ -339,19 +303,13 @@ export default function MonthScreen({
             {calendarDates.map((date) => {
               const dateText = formatDate(date);
               const dayShifts = shifts.filter(
-                (shift) => shift.work_date === dateText
+                (shift) =>
+                  shift.work_date === dateText &&
+                  getStatus(shift) === "working"
               );
 
               const workingCount = dayShifts.filter(
                 (shift) => getStatus(shift) === "working"
-              ).length;
-
-              const tentativeCount = dayShifts.filter(
-                (shift) => getStatus(shift) === "tentative"
-              ).length;
-
-              const holidayCount = dayShifts.filter(
-                (shift) => getStatus(shift) === "holiday"
               ).length;
 
               const isCurrentMonth =
@@ -406,29 +364,6 @@ export default function MonthScreen({
                       </p>
                     )}
 
-                    {tentativeCount > 0 && (
-                      <p
-                        className={
-                          isSelected
-                            ? "text-yellow-200"
-                            : "text-yellow-700"
-                        }
-                      >
-                        仮 {tentativeCount}
-                      </p>
-                    )}
-
-                    {holidayCount > 0 && (
-                      <p
-                        className={
-                          isSelected
-                            ? "text-gray-200"
-                            : "text-gray-500"
-                        }
-                      >
-                        休 {holidayCount}
-                      </p>
-                    )}
                   </div>
                 </button>
               );

@@ -56,9 +56,6 @@ function getBarClasses(shift: Shift): string {
   if (isWorkingNow(shift)) {
     return "border-green-600 bg-green-500 text-white";
   }
-  if (getShiftType(shift) === "tentative") {
-    return "border-yellow-500 bg-yellow-300 text-yellow-950";
-  }
   return "border-blue-600 bg-blue-500 text-white";
 }
 
@@ -93,10 +90,7 @@ export default function ShiftTimetable({
   onSelectShift,
 }: ShiftTimetableProps) {
   const activeShifts = shifts.filter(
-    (shift) => getShiftType(shift) !== "holiday"
-  );
-  const holidayShifts = shifts.filter(
-    (shift) => getShiftType(shift) === "holiday"
+    (shift) => getShiftType(shift) === "working"
   );
   const duration =
     businessHours.closeMinutes - businessHours.openMinutes;
@@ -107,7 +101,7 @@ export default function ShiftTimetable({
     (_, index) => businessHours.openMinutes + index * 60
   );
 
-  if (activeShifts.length === 0 && holidayShifts.length === 0) {
+  if (activeShifts.length === 0) {
     return (
       <div className="rounded-2xl border border-dashed border-gray-300 bg-white p-6 text-center">
         <p className="text-sm font-bold text-gray-700">
@@ -130,7 +124,6 @@ export default function ShiftTimetable({
           </span>
           <Legend color="bg-blue-500" label="通常出勤" />
           <Legend color="bg-green-500" label="出勤中" />
-          <Legend color="bg-yellow-300" label="仮シフト" />
         </div>
       </div>
 
@@ -248,26 +241,6 @@ export default function ShiftTimetable({
         </div>
       )}
 
-      {holidayShifts.length > 0 && (
-        <div className="border-t border-gray-200 bg-gray-50 p-4">
-          <p className="text-xs font-bold text-gray-700">休み</p>
-          <div className="mt-2 flex flex-wrap gap-2">
-            {holidayShifts.map((shift) => (
-              <button
-                key={shift.id}
-                type="button"
-                onClick={() =>
-                  canEdit && onSelectShift?.(shift)
-                }
-                disabled={!canEdit}
-                className="rounded-full bg-gray-200 px-3 py-2 text-xs font-bold text-gray-700"
-              >
-                {getCastName(shift)}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
     </section>
   );
 }

@@ -25,8 +25,6 @@ import {
 type ShiftFilter =
   | "all"
   | "working"
-  | "tentative"
-  | "holiday"
   | "now";
 type ViewMode = "list" | "timetable";
 
@@ -153,37 +151,32 @@ export default function TodayScreen({
     }
   }
 
+  const visibleShifts = useMemo(
+    () =>
+      shifts.filter(
+        (shift) => getShiftType(shift) === "working"
+      ),
+    [shifts]
+  );
+
   const summary = useMemo(() => {
-    const working = shifts.filter(
-      (shift) => getShiftType(shift) === "working"
-    );
-    const tentative = shifts.filter(
-      (shift) => getShiftType(shift) === "tentative"
-    );
-    const holiday = shifts.filter(
-      (shift) => getShiftType(shift) === "holiday"
-    );
+    const working = visibleShifts;
 
     return {
       working: working.length,
-      tentative: tentative.length,
-      holiday: holiday.length,
       now: working.filter(isWorkingNow).length,
       rooms: new Set(
-        shifts
-          .filter(
-            (shift) => getShiftType(shift) !== "holiday"
-          )
+        visibleShifts
           .map((shift) => shift.rooms?.name)
           .filter(Boolean)
       ).size,
     };
-  }, [shifts]);
+  }, [visibleShifts]);
 
   const filteredShifts = useMemo(() => {
     const keyword = searchText.trim().toLocaleLowerCase();
 
-    return shifts.filter((shift) => {
+    return visibleShifts.filter((shift) => {
       const type = getShiftType(shift);
       const matchesFilter =
         filter === "all" ||
@@ -204,28 +197,22 @@ export default function TodayScreen({
         (!keyword || searchableText.includes(keyword))
       );
     });
-  }, [shifts, filter, searchText]);
+  }, [visibleShifts, filter, searchText]);
 
   const filterItems: {
     key: ShiftFilter;
     label: string;
     count: number;
   }[] = [
-    { key: "all", label: "すべて", count: shifts.length },
+    {
+      key: "all",
+      label: "すべて",
+      count: visibleShifts.length,
+    },
     {
       key: "working",
       label: "通常",
       count: summary.working,
-    },
-    {
-      key: "tentative",
-      label: "仮",
-      count: summary.tentative,
-    },
-    {
-      key: "holiday",
-      label: "休み",
-      count: summary.holiday,
     },
     { key: "now", label: "出勤中", count: summary.now },
   ];
@@ -304,19 +291,9 @@ export default function TodayScreen({
           classes="bg-blue-50 text-blue-700"
         />
         <SummaryCard
-          label="仮シフト"
-          value={summary.tentative}
-          classes="bg-yellow-50 text-yellow-700"
-        />
-        <SummaryCard
           label="現在出勤中"
           value={summary.now}
           classes="bg-green-50 text-green-700"
-        />
-        <SummaryCard
-          label="休み"
-          value={summary.holiday}
-          classes="bg-gray-100 text-gray-700"
         />
         <div className="col-span-2 rounded-2xl bg-purple-50 p-3 text-purple-700">
           <p className="text-xs">使用予定の部屋</p>
@@ -410,21 +387,13 @@ export default function TodayScreen({
             const status = workingNow ? "working" : type;
             const statusLabel = workingNow
               ? "現在出勤中"
-              : type === "tentative"
-                ? "仮シフト"
-                : type === "holiday"
-                  ? "休み"
-                  : "通常出勤";
+              : "通常出勤";
 
             return (
               <ShiftCard
                 key={shift.id}
                 name={getCastName(shift)}
-                room={
-                  type === "holiday"
-                    ? null
-                    : shift.rooms?.name || null
-                }
+                room={shift.rooms?.name || null}
                 time={formatExtendedTime(
                   shift.start_time,
                   shift.end_time
