@@ -53,7 +53,11 @@ function calculateHourlyStaffing(
     const slotStart = hour * 60;
     const slotEnd = slotStart + 60;
     const active = shifts.filter((shift) => {
-      if (shift.status === "holiday") return false;
+      if (
+        (shift.status ?? "working") !== "working"
+      ) {
+        return false;
+      }
 
       let start = timeToMinutes(shift.start_time);
       let end = timeToMinutes(shift.end_time);

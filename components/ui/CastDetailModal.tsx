@@ -70,30 +70,6 @@ function formatMinutes(totalMinutes: number): string {
   return `${hours}時間${minutes}分`;
 }
 
-function getStatusLabel(shift: Shift): string {
-  switch (shift.status) {
-    case "tentative":
-      return "仮シフト";
-    case "holiday":
-      return "休み";
-    case "working":
-    default:
-      return "通常出勤";
-  }
-}
-
-function getStatusClasses(shift: Shift): string {
-  switch (shift.status) {
-    case "tentative":
-      return "bg-yellow-100 text-yellow-700";
-    case "holiday":
-      return "bg-gray-100 text-gray-600";
-    case "working":
-    default:
-      return "bg-blue-100 text-blue-700";
-  }
-}
-
 export default function CastDetailModal({
   cast,
   onClose,
@@ -115,7 +91,12 @@ export default function CastDetailModal({
         const data = await getShiftsByCastId(cast.id);
 
         if (!isCancelled) {
-          setShifts(data);
+          setShifts(
+            data.filter(
+              (shift) =>
+                (shift.status ?? "working") === "working"
+            )
+          );
         }
       } catch (error) {
         console.error("キャストのシフト履歴取得エラー:", error);
@@ -149,13 +130,7 @@ export default function CastDetailModal({
     );
   }, [shifts]);
 
-  const currentMonthWorkingShifts = useMemo(
-    () =>
-      currentMonthShifts.filter(
-        (shift) => shift.status !== "holiday"
-      ),
-    [currentMonthShifts]
-  );
+  const currentMonthWorkingShifts = currentMonthShifts;
 
   const currentMonthMinutes = useMemo(
     () =>
@@ -265,20 +240,14 @@ export default function CastDetailModal({
                         {shift.work_date}
                       </p>
 
-                      {shift.status !== "holiday" && (
-                        <p className="mt-1 text-sm text-gray-600">
-                          {shift.start_time.slice(0, 5)}〜
-                          {shift.end_time.slice(0, 5)}
-                        </p>
-                      )}
+                      <p className="mt-1 text-sm text-gray-600">
+                        {shift.start_time.slice(0, 5)}〜
+                        {shift.end_time.slice(0, 5)}
+                      </p>
                     </div>
 
-                    <span
-                      className={`shrink-0 rounded-full px-2.5 py-1 text-xs font-bold ${getStatusClasses(
-                        shift
-                      )}`}
-                    >
-                      {getStatusLabel(shift)}
+                    <span className="shrink-0 rounded-full bg-blue-100 px-2.5 py-1 text-xs font-bold text-blue-700">
+                      通常出勤
                     </span>
                   </div>
 

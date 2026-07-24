@@ -90,7 +90,8 @@ function formatTimeRange(shift: Shift): string {
 function findCastConflicts(shifts: Shift[]): ShiftIssue[] {
   const issues: ShiftIssue[] = [];
   const activeShifts = shifts.filter(
-    (shift) => shift.status !== "holiday"
+    (shift) =>
+      (shift.status ?? "working") === "working"
   );
   const shiftsByDate = new Map<string, Shift[]>();
 

@@ -12,7 +12,6 @@ type CastWorkload = {
   workDates: number;
   workingMinutes: number;
   workingShifts: number;
-  tentativeShifts: number;
 };
 
 function formatLocalDate(date: Date): string {
@@ -62,28 +61,25 @@ function calculateWorkloads(shifts: Shift[]): CastWorkload[] {
       dates: Set<string>;
       workingMinutes: number;
       workingShifts: number;
-      tentativeShifts: number;
     }
   >();
 
   shifts
-    .filter((shift) => shift.status !== "holiday")
+    .filter(
+      (shift) =>
+        (shift.status ?? "working") === "working"
+    )
     .forEach((shift) => {
       const current = map.get(shift.cast_id) ?? {
         name: getCastName(shift),
         dates: new Set<string>(),
         workingMinutes: 0,
         workingShifts: 0,
-        tentativeShifts: 0,
       };
 
       current.dates.add(shift.work_date);
-      if (shift.status === "tentative") {
-        current.tentativeShifts += 1;
-      } else {
-        current.workingShifts += 1;
-        current.workingMinutes += getShiftMinutes(shift);
-      }
+      current.workingShifts += 1;
+      current.workingMinutes += getShiftMinutes(shift);
       map.set(shift.cast_id, current);
     });
 
@@ -94,7 +90,6 @@ function calculateWorkloads(shifts: Shift[]): CastWorkload[] {
       workDates: data.dates.size,
       workingMinutes: data.workingMinutes,
       workingShifts: data.workingShifts,
-      tentativeShifts: data.tentativeShifts,
     }))
     .sort((a, b) => b.workingMinutes - a.workingMinutes);
 }
@@ -225,10 +220,8 @@ export default function CastWorkloadPanel() {
                       {cast.name}
                     </p>
                     <p className="mt-1 text-xs text-gray-500">
-                      出勤 {cast.workDates}日・確定{" "}
+                      出勤 {cast.workDates}日・登録{" "}
                       {cast.workingShifts}件
-                      {cast.tentativeShifts > 0 &&
-                        `・仮 ${cast.tentativeShifts}件`}
                     </p>
                   </div>
                   <p className="shrink-0 font-bold text-emerald-700">

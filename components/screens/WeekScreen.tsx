@@ -153,6 +153,7 @@ export default function WeekScreen({
         getStatus(shift) === statusFilter;
       const searchable = [
         getCastName(shift),
+        shift.rooms?.name || "",
         shift.memo || "",
       ]
         .join(" ")
@@ -234,7 +235,7 @@ export default function WeekScreen({
         <input
           value={searchText}
           onChange={(event) => setSearchText(event.target.value)}
-          placeholder="キャスト名・メモで検索"
+          placeholder="キャスト名・部屋・メモで検索"
           className="w-full rounded-xl border border-gray-300 bg-gray-50 p-3 text-sm"
         />
         <div className="mt-3 grid grid-cols-2 gap-2">
@@ -332,6 +333,12 @@ export default function WeekScreen({
                                   shift.end_time
                                 )}
                               </p>
+                              {status !== "holiday" &&
+                                shift.rooms?.name && (
+                                  <p className="text-xs text-gray-500">
+                                    部屋：{shift.rooms.name}
+                                  </p>
+                                )}
                             </div>
                             <span className="text-xs font-bold text-gray-600">
                               {getStatusLabel(status)}

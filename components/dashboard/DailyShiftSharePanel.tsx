@@ -1,4 +1,5 @@
 "use client";
+/* eslint-disable react-hooks/exhaustive-deps */
 
 import { useEffect, useMemo, useState } from "react";
 import {
@@ -32,13 +33,11 @@ function getCastName(shift: Shift): string {
 }
 
 function getStatusLabel(shift: Shift): string {
-  if (shift.status === "tentative") return "仮";
-  if (shift.status === "holiday") return "休み";
+  void shift;
   return "出勤";
 }
 
 function formatTime(shift: Shift): string {
-  if (shift.status === "holiday") return "休み";
   return `${shift.start_time.slice(0, 5)}〜${shift.end_time.slice(
     0,
     5
@@ -47,10 +46,8 @@ function formatTime(shift: Shift): string {
 
 function createShareText(date: string, shifts: Shift[]): string {
   const working = shifts.filter(
-    (shift) => shift.status !== "holiday"
-  );
-  const holidays = shifts.filter(
-    (shift) => shift.status === "holiday"
+    (shift) =>
+      (shift.status ?? "working") === "working"
   );
   const lines = [
     `【${formatJapaneseDate(date)} シフト】`,
@@ -59,18 +56,10 @@ function createShareText(date: string, shifts: Shift[]): string {
   ];
 
   working.forEach((shift) => {
-    const tentative =
-      shift.status === "tentative" ? "（仮）" : "";
     lines.push(
-      `・${getCastName(shift)}${tentative} ${formatTime(
-        shift
-      )}`
+      `・${getCastName(shift)} ${formatTime(shift)}`
     );
   });
-
-  if (holidays.length > 0) {
-    lines.push("", `休み：${holidays.map(getCastName).join("、")}`);
-  }
 
   return lines.join("\n");
 }
@@ -138,7 +127,13 @@ export default function DailyShiftSharePanel() {
     try {
       setIsLoading(true);
       setMessage("");
-      setShifts(await getShiftsByDate(targetDate));
+      const data = await getShiftsByDate(targetDate);
+      setShifts(
+        data.filter(
+          (shift) =>
+            (shift.status ?? "working") === "working"
+        )
+      );
     } catch (error) {
       console.error("共有用シフト取得エラー:", error);
       setMessage("シフトを取得できませんでした。");

@@ -4,7 +4,6 @@ import { useState } from "react";
 import {
   getShiftsByDateRange,
   type Shift,
-  type ShiftStatus,
 } from "@/services/shift.service";
 
 function formatLocalDate(date: Date): string {
@@ -24,18 +23,6 @@ function getInitialRange() {
       new Date(today.getFullYear(), today.getMonth() + 1, 0)
     ),
   };
-}
-
-function getStatusLabel(status: ShiftStatus | null): string {
-  switch (status) {
-    case "tentative":
-      return "仮シフト";
-    case "holiday":
-      return "休み";
-    case "working":
-    default:
-      return "通常出勤";
-  }
 }
 
 function protectSpreadsheetFormula(value: string): string {
@@ -61,7 +48,6 @@ function createCsv(shifts: Shift[]): string {
     "キャスト名",
     "出勤時間",
     "退勤時間",
-    "状態",
     "メモ",
   ];
 
@@ -70,7 +56,6 @@ function createCsv(shifts: Shift[]): string {
     getCastName(shift),
     shift.start_time.slice(0, 5),
     shift.end_time.slice(0, 5),
-    getStatusLabel(shift.status),
     shift.memo ?? "",
   ]);
 
@@ -120,9 +105,13 @@ export default function ShiftCsvExportPanel() {
       setIsExporting(true);
       setMessage("");
 
-      const shifts = await getShiftsByDateRange(
+      const allShifts = await getShiftsByDateRange(
         startDate,
         endDate
+      );
+      const shifts = allShifts.filter(
+        (shift) =>
+          (shift.status ?? "working") === "working"
       );
 
       if (shifts.length === 0) {

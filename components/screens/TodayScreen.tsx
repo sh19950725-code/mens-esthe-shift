@@ -165,6 +165,11 @@ export default function TodayScreen({
     return {
       working: working.length,
       now: working.filter(isWorkingNow).length,
+      rooms: new Set(
+        visibleShifts
+          .map((shift) => shift.rooms?.name)
+          .filter(Boolean)
+      ).size,
     };
   }, [visibleShifts]);
 
@@ -181,6 +186,7 @@ export default function TodayScreen({
 
       const searchableText = [
         getCastName(shift),
+        shift.rooms?.name || "",
         shift.memo || "",
       ]
         .join(" ")
@@ -289,13 +295,19 @@ export default function TodayScreen({
           value={summary.now}
           classes="bg-green-50 text-green-700"
         />
+        <div className="col-span-2 rounded-2xl bg-purple-50 p-3 text-purple-700">
+          <p className="text-xs">使用予定の部屋</p>
+          <p className="mt-1 text-xl font-bold">
+            {summary.rooms}室
+          </p>
+        </div>
       </section>
 
       <section className="mb-4 rounded-2xl border border-gray-200 bg-white p-3 shadow-sm">
         <input
           value={searchText}
           onChange={(event) => setSearchText(event.target.value)}
-          placeholder="キャスト名・メモで検索"
+          placeholder="キャスト名・部屋・メモで検索"
           className="w-full rounded-xl border border-gray-300 bg-gray-50 p-3 text-sm outline-none focus:border-gray-900"
         />
 
@@ -381,7 +393,7 @@ export default function TodayScreen({
               <ShiftCard
                 key={shift.id}
                 name={getCastName(shift)}
-                room={null}
+                room={shift.rooms?.name || null}
                 time={formatExtendedTime(
                   shift.start_time,
                   shift.end_time
