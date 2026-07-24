@@ -42,6 +42,62 @@ function getOneWeekLaterDate(dateText: string): string {
   return formatLocalDate(date);
 }
 
+function normalizeDirectInput(value: string): string {
+  return value
+    .replace(/[０-９]/g, (character) =>
+      String.fromCharCode(character.charCodeAt(0) - 0xfee0)
+    )
+    .replace(/[：]/g, ":")
+    .replace(/[／]/g, "/")
+    .trim();
+}
+
+function normalizeTimeInput(value: string): string {
+  const normalized = normalizeDirectInput(value);
+  const digitsOnly = normalized.replace(/\D/g, "");
+
+  if (/^\d{3,4}$/.test(digitsOnly)) {
+    const minuteText = digitsOnly.slice(-2);
+    const hourText = digitsOnly.slice(0, -2);
+    return `${hourText.padStart(2, "0")}:${minuteText}`;
+  }
+
+  const match = normalized.match(/^(\d{1,2}):(\d{1,2})$/);
+  if (!match) return normalized;
+
+  return `${match[1].padStart(2, "0")}:${match[2].padStart(
+    2,
+    "0"
+  )}`;
+}
+
+function isValidDateInput(value: string): boolean {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value)) return false;
+
+  const [year, month, day] = value.split("-").map(Number);
+  const date = new Date(year, month - 1, day);
+
+  return (
+    date.getFullYear() === year &&
+    date.getMonth() === month - 1 &&
+    date.getDate() === day
+  );
+}
+
+function isValidTimeInput(value: string): boolean {
+  const match = value.match(/^(\d{1,2}):([0-5]\d)$/);
+  if (!match) return false;
+
+  const hour = Number(match[1]);
+  return hour >= 0 && hour <= 47;
+}
+
+function normalizeTimeForStorage(value: string): string {
+  const [hourText, minuteText] = value.split(":");
+  const hour = Number(hourText) % 24;
+  return `${String(hour).padStart(2, "0")}:${minuteText}`;
+}
+
 export default function RegisterScreen() {
   const [mode, setMode] = useState<RegisterMode>("single");
   const [casts, setCasts] = useState<Cast[]>([]);
@@ -52,8 +108,8 @@ export default function RegisterScreen() {
   const [endDate, setEndDate] = useState(
     () => getOneWeekLaterDate(getTodayDate())
   );
-  const [startTime, setStartTime] = useState("12:00");
-  const [endTime, setEndTime] = useState("20:00");
+  const [startTime, setStartTime] = useState("");
+  const [endTime, setEndTime] = useState("");
   const [status, setStatus] =
     useState<ShiftStatus>("working");
   const [memo, setMemo] = useState("");
@@ -160,8 +216,8 @@ export default function RegisterScreen() {
       setCastId("");
       setRoomId("");
     }
-    setStartTime("12:00");
-    setEndTime("20:00");
+    setStartTime("");
+    setEndTime("");
     setStatus("working");
     setMemo("");
   }
@@ -187,6 +243,15 @@ export default function RegisterScreen() {
       alert("出勤時間と退勤時間を入力してください");
       return false;
     }
+    if (
+      !isValidTimeInput(startTime) ||
+      !isValidTimeInput(endTime)
+    ) {
+      alert(
+        "時間は「16:00」または「28:00」の形式で入力してください"
+      );
+      return false;
+    }
     if (startTime === endTime) {
       alert("出勤時間と退勤時間を同じにはできません");
       return false;
@@ -197,20 +262,27 @@ export default function RegisterScreen() {
   async function addSingleShift() {
     if (!validateCommonFields()) return;
     if (!workDate) {
-      alert("日付を選択してください");
+      alert("日付を入力してください");
+      return;
+    }
+    if (!isValidDateInput(workDate)) {
+      alert("日付は「YYYY-MM-DD」の形式で入力してください");
       return;
     }
 
     try {
       setIsSubmitting(true);
+      const storedStartTime =
+        normalizeTimeForStorage(startTime);
+      const storedEndTime = normalizeTimeForStorage(endTime);
 
       if (status !== "holiday") {
         const result = await checkShiftConflict(
           castId,
           null,
           workDate,
-          startTime,
-          endTime
+          storedStartTime,
+          storedEndTime
         );
         if (!result.ok) {
           alert(result.message);
@@ -223,8 +295,8 @@ export default function RegisterScreen() {
         room_id:
           null,
         work_date: workDate,
-        start_time: startTime,
-        end_time: endTime,
+        start_time: storedStartTime,
+        end_time: storedEndTime,
         status,
         memo: memo.trim() || null,
       });
@@ -243,7 +315,14 @@ export default function RegisterScreen() {
   async function addBulkShifts() {
     if (!validateCommonFields()) return;
     if (!startDate || !endDate) {
-      alert("開始日と終了日を選択してください");
+      alert("開始日と終了日を入力してください");
+      return;
+    }
+    if (
+      !isValidDateInput(startDate) ||
+      !isValidDateInput(endDate)
+    ) {
+      alert("日付は「YYYY-MM-DD」の形式で入力してください");
       return;
     }
     if (startDate > endDate) {
@@ -252,14 +331,17 @@ export default function RegisterScreen() {
     }
     try {
       setIsSubmitting(true);
+      const storedStartTime =
+        normalizeTimeForStorage(startTime);
+      const storedEndTime = normalizeTimeForStorage(endTime);
       const result = await createShiftsBulk({
         cast_id: castId,
         room_id:
           null,
         start_date: startDate,
         end_date: endDate,
-        start_time: startTime,
-        end_time: endTime,
+        start_time: storedStartTime,
+        end_time: storedEndTime,
         status,
         memo: memo.trim() || null,
         weekdays: ALL_WEEKDAYS,
@@ -312,8 +394,8 @@ export default function RegisterScreen() {
       (!keepSelection &&
         (Boolean(castId) || Boolean(roomId))) ||
       status !== "working" ||
-      startTime !== "12:00" ||
-      endTime !== "20:00" ||
+      Boolean(startTime) ||
+      Boolean(endTime) ||
       Boolean(memo.trim())
     );
   }, [
@@ -418,7 +500,7 @@ export default function RegisterScreen() {
         <p className="text-sm text-gray-500">シフト追加</p>
         <h1 className="text-2xl font-bold">シフト登録</h1>
         <p className="mt-1 text-sm text-gray-500">
-          1件ずつ、または期間と曜日を指定して登録できます
+          日付と時間を直接入力して登録できます
         </p>
       </header>
 
@@ -484,10 +566,16 @@ export default function RegisterScreen() {
             <Input
               value={workDate}
               onChange={(event) =>
-                setWorkDate(event.target.value)
+                setWorkDate(normalizeDirectInput(event.target.value))
               }
-              type="date"
+              type="text"
+              inputMode="numeric"
+              placeholder="例：2026-07-24"
+              autoComplete="off"
             />
+            <p className="mt-1 text-xs text-gray-500">
+              YYYY-MM-DD形式で入力
+            </p>
           </Field>
         ) : (
           <>
@@ -496,24 +584,34 @@ export default function RegisterScreen() {
                 <Input
                   value={startDate}
                   onChange={(event) => {
-                    const nextStartDate = event.target.value;
+                    const nextStartDate = normalizeDirectInput(
+                      event.target.value
+                    );
                     setStartDate(nextStartDate);
-                    if (nextStartDate) {
+                    if (isValidDateInput(nextStartDate)) {
                       setEndDate(
                         getOneWeekLaterDate(nextStartDate)
                       );
                     }
                   }}
-                  type="date"
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="YYYY-MM-DD"
+                  autoComplete="off"
                 />
               </Field>
               <Field label="終了日">
                 <Input
                   value={endDate}
                   onChange={(event) =>
-                    setEndDate(event.target.value)
+                    setEndDate(
+                      normalizeDirectInput(event.target.value)
+                    )
                   }
-                  type="date"
+                  type="text"
+                  inputMode="numeric"
+                  placeholder="YYYY-MM-DD"
+                  autoComplete="off"
                 />
               </Field>
             </div>
@@ -558,7 +656,15 @@ export default function RegisterScreen() {
               onChange={(event) =>
                 setStartTime(event.target.value)
               }
-              type="time"
+              onBlur={() =>
+                setStartTime((current) =>
+                  normalizeTimeInput(current)
+                )
+              }
+              type="text"
+              inputMode="numeric"
+              placeholder="例：16:00"
+              autoComplete="off"
             />
           </Field>
           <Field label="退勤時間">
@@ -567,13 +673,22 @@ export default function RegisterScreen() {
               onChange={(event) =>
                 setEndTime(event.target.value)
               }
-              type="time"
+              onBlur={() =>
+                setEndTime((current) =>
+                  normalizeTimeInput(current)
+                )
+              }
+              type="text"
+              inputMode="numeric"
+              placeholder="例：28:00"
+              autoComplete="off"
             />
           </Field>
 
-          {startTime &&
-            endTime &&
-            endTime < startTime && (
+          {isValidTimeInput(startTime) &&
+            isValidTimeInput(endTime) &&
+            (Number(endTime.split(":")[0]) >= 24 ||
+              endTime < startTime) && (
               <div className="col-span-2 rounded-xl border border-blue-200 bg-blue-50 p-3">
                 <p className="text-sm font-bold text-blue-800">
                   翌日の退勤として登録します
