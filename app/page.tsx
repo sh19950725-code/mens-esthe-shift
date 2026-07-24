@@ -199,12 +199,6 @@ function ShiftManagementApp() {
   }
 
   const showBottomNavigation = isNavigationTab(activeTab);
-  const showFloatingRegisterButton =
-    canEdit &&
-    activeTab !== "register" &&
-    activeTab !== "storeSettings" &&
-    activeTab !== "audit" &&
-    activeTab !== "adminUsers";
 
   if (!profileLoaded) {
     return (
@@ -313,17 +307,6 @@ function ShiftManagementApp() {
           <AdminUsersScreen onBack={() => openTab("home")} />
         )}
       </div>
-
-      {showFloatingRegisterButton && (
-        <button
-          type="button"
-          onClick={() => openTab("register")}
-          aria-label="シフトを登録"
-          className="fixed bottom-20 left-1/2 z-40 flex h-14 w-14 -translate-x-1/2 items-center justify-center rounded-full bg-gray-900 text-3xl font-light text-white shadow-lg"
-        >
-          ＋
-        </button>
-      )}
 
       {showBottomNavigation && (
         <BottomNavigation
