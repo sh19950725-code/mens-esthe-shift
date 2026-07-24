@@ -6,6 +6,7 @@ import CastFilters, {
 } from "@/components/casts/CastFilters";
 import CastHeader from "@/components/casts/CastHeader";
 import CastList from "@/components/casts/CastList";
+import CastShiftManager from "@/components/casts/CastShiftManager";
 import CastTabs, {
   type CastView,
 } from "@/components/casts/CastTabs";
@@ -347,6 +348,11 @@ export default function CastScreen({
         onAdd={addCast}
         sortOrder={sortOrder}
         onSortOrderChange={setSortOrder}
+      />
+
+      <CastShiftManager
+        casts={[...activeCasts, ...inactiveCasts]}
+        canEdit={canEdit}
       />
 
       <CastTabs
