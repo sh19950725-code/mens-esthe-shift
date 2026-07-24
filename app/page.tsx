@@ -290,7 +290,16 @@ function ShiftManagementApp() {
           />
         )}
         {activeTab === "register" && canEdit && (
-          <RegisterScreen />
+          <>
+            <RegisterScreen />
+            <button
+              type="button"
+              onClick={() => openTab("home")}
+              className="mt-4 w-full rounded-2xl border border-gray-300 bg-white px-4 py-3 text-sm font-bold text-gray-700 shadow-sm"
+            >
+              ホームに戻る
+            </button>
+          </>
         )}
         {activeTab === "casts" && (
           <CastScreen canEdit={canEdit} />
@@ -327,6 +336,7 @@ function ShiftManagementApp() {
       )}
 
       {!showBottomNavigation &&
+        activeTab !== "register" &&
         activeTab !== "rooms" &&
         activeTab !== "roomTimeline" &&
         activeTab !== "storeSettings" &&
